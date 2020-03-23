@@ -10,4 +10,5 @@ echo Class-Path: ../../../../../../../java-advanced-2020/artifacts/info.kgeorgiy
 
 cd _build
 jar cfm ../_implementor.jar MANIFEST.TXT *.class ru/ifmo/rain/korobkov/implementor/*.class
+cd ..
 
