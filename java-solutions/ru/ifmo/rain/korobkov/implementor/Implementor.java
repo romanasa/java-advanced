@@ -22,6 +22,11 @@ import java.util.jar.Manifest;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+/**
+ * Generate implementation of classes and interfaces
+ *
+ * Implements {@link Impler}
+ */
 public class Implementor implements Impler {
 
     private static final String GENERATED_CLASS_SUFFIX = "Impl";
@@ -34,6 +39,9 @@ public class Implementor implements Impler {
     private static final String LEFT_BRACKET = "(";
     private static final String RIGHT_BRACKET = ")";
 
+    /**
+     * FileExtension enum
+     */
     enum FileExtension {
         JAVA(".java"),
         CLASS(".class");
@@ -50,6 +58,9 @@ public class Implementor implements Impler {
     }
 
 
+    /**
+     * Class for method to keep it in {@link java.util.HashSet}
+     */
     private static class MethodWrapper {
         private static final int PRIME = 1031;
         private final Method method;
@@ -96,11 +107,24 @@ public class Implementor implements Impler {
         }
     }
 
+    /**
+     * Method generates class name by token
+     *
+     * @param token         class definition
+     * @return {@link java.lang.String} class name extracted from given definition
+     */
     private static String getClassName(Class<?> token) {
         return token.getSimpleName() + GENERATED_CLASS_SUFFIX;
     }
 
 
+    /**
+     * Updates path according to specified package
+     *
+     * @param token     class definition
+     * @param root      root path
+     * @return {@link Path}
+     */
     private static Path addPackageToPath(Class<?> token, Path root) {
         if (token.getPackage() != null) {
             root = root.resolve(token.getPackage()
@@ -109,12 +133,28 @@ public class Implementor implements Impler {
         return root;
     }
 
+    /**
+     * Returns full path where implementation class of <code>token</code>
+     * with extension <code>extension</code> should be generated
+     *
+     * @param token           class definition
+     * @param root            root path
+     * @param extension       file extension
+     * @return {@link Path}
+     * @throws IOException if can't create directories
+     */
     static Path getFilePath(Class<?> token, Path root, FileExtension extension) throws IOException {
         root = addPackageToPath(token, root);
         Files.createDirectories(root);
         return root.resolve(getClassName(token) + extension.getValue());
     }
 
+    /**
+     * Escapes text
+     *
+     * @param text text to escape
+     * @return {@link java.lang.String} escaped string
+     */
     private static String escape(String text) {
         StringBuilder result = new StringBuilder();
         int textLength = text.length();
@@ -129,16 +169,35 @@ public class Implementor implements Impler {
         return result.toString();
     }
 
+    /**
+     * Method generates package name by class definition
+     *
+     * @param token          class definition
+     * @return {@link java.lang.String} package name extracted from given definition
+     */
     private static String getPackage(Class<?> token) {
         return "package " + token.getPackage().getName();
     }
 
-    private static void printPackage(Class<?> token, BufferedWriter BufferedWriter) throws IOException {
+    /**
+     * Prints package of class using {@link java.io.BufferedWriter}, if it is not null
+     *
+     * @param token             class definition
+     * @param bufferedWriter    used to print package
+     * @throws IOException if error while writing
+     */
+    private static void printPackage(Class<?> token, BufferedWriter bufferedWriter) throws IOException {
         if (token.getPackage() != null) {
-            BufferedWriter.write(escape(getPackage(token) + ";" + NEW_LINE));
+            bufferedWriter.write(escape(getPackage(token) + ";" + NEW_LINE));
         }
     }
 
+    /**
+     * Get all needed information from class definition to generate class declaration
+     *
+     * @param token         class definition
+     * @return {@link java.lang.String} class declaration string
+     */
     private static String getClassDeclaration(Class<?> token) {
         int modifiers = token.getModifiers() & ~Modifier.FINAL &
                 ~Modifier.PROTECTED & ~Modifier.INTERFACE & ~Modifier.STATIC & ~Modifier.ABSTRACT;
@@ -147,11 +206,23 @@ public class Implementor implements Impler {
                 escape(token.getCanonicalName()) + " {" + NEW_LINE;
     }
 
+    /**
+     * Prints class declaration using {@link java.io.BufferedWriter}
+     *
+     * @param token             class definition
+     * @param bufferedWriter    used to print declaration of class
+     * @throws IOException if error while writing
+     */
     private static void printClassDeclaration(Class<?> token, BufferedWriter bufferedWriter) throws IOException {
         bufferedWriter.write(escape(getClassDeclaration(token)));
     }
 
-
+    /**
+     * Converts array of annotations to string
+     *
+     * @param annotations array of annotations
+     * @return {@link java.lang.String} annotations converted to string
+     */
     private static String getMethodAnnotations(Annotation[] annotations) {
         StringBuilder builder = new StringBuilder();
         for (Annotation annotation : annotations) {
@@ -161,11 +232,23 @@ public class Implementor implements Impler {
         return builder.toString();
     }
 
-    private static String getTabulation(int tabs) {
-        return DEFAULT_TAB.repeat(tabs);
+    /**
+     * Returns string that consists of <code>cnt</code> tabs
+     *
+     * @param cnt amount of tabs needed
+     * @return {@link String} tabulation string
+     */
+    private static String getTabulation(int cnt) {
+        return DEFAULT_TAB.repeat(cnt);
     }
 
-
+    /**
+     * Method returns parameters from executable
+     *
+     * @param executable        executable where to get parameters from
+     * @param needType          flag, which indicates whether type is needed before parameter name
+     * @return {@link java.lang.String} parameters string
+     */
     private static String getParameters(Executable executable, boolean needType) {
         StringBuilder builder = new StringBuilder();
 
@@ -185,6 +268,13 @@ public class Implementor implements Impler {
         return builder.toString();
     }
 
+
+    /**
+     * Method generates string with exceptions separated by comma from executable
+     *
+     * @param executable executable where to get exceptions from
+     * @return {@link java.lang.String} exceptions
+     */
     private static String getMethodExceptions(Executable executable) {
         StringBuilder builder = new StringBuilder();
         Class<?>[] exceptions = executable.getExceptionTypes();
@@ -202,6 +292,21 @@ public class Implementor implements Impler {
         return builder.toString();
     }
 
+    /**
+     * Retrieves method declarations from class definition
+     *
+     * Removes the following modifiers if the executable does have them:
+     * <ul>
+     * <li><code>abstract</code></li>
+     * <li><code>interface</code></li>
+     * <li><code>transient</code></li>
+     * <li><code>native</code></li>
+     * </ul>
+     *
+     * @param token class definition
+     * @param executable      executable where to get declarations
+     * @return {@link java.lang.String} methods string
+     */
     private static String getMethodDeclaration(Class<?> token, Executable executable) {
         StringBuilder builder = new StringBuilder();
 
@@ -235,6 +340,14 @@ public class Implementor implements Impler {
         return builder.toString();
     }
 
+    /**
+     * Generates constructors for class from class definition
+     *
+     * @param token class definition
+     * @return {@link java.lang.String}
+     * @throws ImplerException when there are no public constructors and class definition is not an interface
+     * @see ImplerException
+     */
     private static String getConstructors(Class<?> token) throws ImplerException {
         StringBuilder builder = new StringBuilder();
 
@@ -267,10 +380,25 @@ public class Implementor implements Impler {
         return builder.toString();
     }
 
+    /**
+     * Prints class constructors using {@link java.io.BufferedWriter}
+     *
+     * @param token             class definition
+     * @param bufferedWriter    used to print class constructors
+     * @throws ImplerException  if error occurred at the stage of generating constructor
+     * @throws IOException      if error with IO
+     * @see ImplerException
+     */
     private static void printConstructors(Class<?> token, BufferedWriter bufferedWriter) throws ImplerException, IOException {
         bufferedWriter.write(escape(getConstructors(token)));
     }
 
+    /**
+     * Method returns default value for <code>type</code>
+     *
+     * @param token     class definition
+     * @return {@link java.lang.String} default value for type extracted from class
+     */
     private static String getDefaultValue(Class<?> token) {
         if (token.equals(boolean.class)) {
             return "false";
@@ -282,6 +410,21 @@ public class Implementor implements Impler {
         return "null";
     }
 
+
+    /**
+     * Generates full implementation of method
+     *
+     * The following items are generated here:
+     * <ul>
+     * <li>Annotations</li>
+     * <li>Method declaration with all needed modifiers</li>
+     * <li>Method implementation with default return value if needed</li>
+     * </ul>
+     *
+     * @param token         class definition
+     * @param method        method full implementation of which is needed
+     * @return {@link java.lang.String} full method implementation
+     */
     private static String getMethodFull(Class<?> token, Method method) {
         StringBuilder builder = new StringBuilder();
 
@@ -309,10 +452,26 @@ public class Implementor implements Impler {
         return builder.toString();
     }
 
+    /**
+     * Prints method using {@link java.io.BufferedWriter}
+     *
+     * @param token             class definition
+     * @param method            method to print
+     * @param bufferedWriter    used to print implementation of method
+     * @throws IOException if error with IO
+     */
     private static void printMethod(Class<?> token, Method method, BufferedWriter bufferedWriter) throws IOException {
         bufferedWriter.write(escape(getMethodFull(token, method)));
     }
 
+
+    /**
+     * Prints methods using {@link java.io.BufferedWriter}
+     *
+     * @param token             class definition
+     * @param bufferedWriter    used to print methods
+     * @throws IOException if error while writing
+     */
     private static void printMethods(Class<?> token, BufferedWriter bufferedWriter) throws IOException {
         Set<MethodWrapper> set = new HashSet<>();
         for (Method method : token.getMethods()) {
@@ -334,6 +493,22 @@ public class Implementor implements Impler {
         bufferedWriter.write(escape(RIGHT_CURVE_BRACKET + NEW_LINE));
     }
 
+    /**
+     * Generates full implementation of class definition in file with suffix <code>Impl.java</code>
+     * <br>
+     * Prints the following: <br>
+     * <ul>
+     * <li>package</li>
+     * <li>class declaration</li>
+     * <li>constructors</li>
+     * <li>methods</li>
+     * </ul>
+     *
+     * @param token             class definition
+     * @param bufferedWriter    used for printing
+     * @throws ImplerException  if error
+     * @throws IOException      if error
+     */
     private static void printFile(Class<?> token, BufferedWriter bufferedWriter) throws ImplerException, IOException {
         printPackage(token, bufferedWriter);
         printClassDeclaration(token, bufferedWriter);
@@ -341,6 +516,15 @@ public class Implementor implements Impler {
         printMethods(token, bufferedWriter);
     }
 
+    /**
+     * Generates implementation for the given class <code>classDefinition</code> and dumps it to <code>root</code>
+     *
+     * @param token type token to create implementation for.
+     * @param root root directory.
+     * @throws ImplerException if something went wrong
+     *
+     * @see info.kgeorgiy.java.advanced.implementor.Impler
+     */
     @Override
     public void implement(Class<?> token, Path root) throws ImplerException {
         if (token == null || root == null) {
@@ -358,6 +542,18 @@ public class Implementor implements Impler {
         }
     }
 
+
+    /**
+     * Entry point of the program. Command line arguments are processed here
+     * <p>
+     * Usage:
+     * <ul>
+     * <li>{@code java -cp . -p . -m ru.ifmo.rain.korobkov.implementor <code>classname</code> <code>path</code>}</li>
+     * </ul>
+     *
+     * @param args command line arguments.
+     * @see Implementor
+     */
     public static void main(String[] args) {
         Implementor implementor = new Implementor();
 

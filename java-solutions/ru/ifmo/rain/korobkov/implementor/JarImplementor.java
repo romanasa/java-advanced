@@ -26,6 +26,13 @@ import java.util.zip.ZipOutputStream;
 
 public class JarImplementor extends Implementor implements JarImpler {
 
+    /**
+     * Compile generated java sources
+     *
+     * @param root root of files
+     * @param jarFile target <var>.jar</var> file
+     * @throws ImplerException if compile was unsuccessful
+     */
 	private void compileClass(Path root, Path jarFile) throws ImplerException {
         final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if (compiler == null) {
@@ -41,6 +48,11 @@ public class JarImplementor extends Implementor implements JarImpler {
         }
     }
 
+    /**
+     * Get string of Class's path
+     * @return {@link java.lang.String} class path
+     * @throws ImplerException if path can't be converted
+     */
     private String getClassPath() throws ImplerException {
         try {
             return Path.of(Implementor.class.getProtectionDomain().getCodeSource().getLocation().toURI()).toString();
@@ -49,12 +61,27 @@ public class JarImplementor extends Implementor implements JarImpler {
         }
     }
 
+    /**
+     * Creates manifest with needed params
+     *
+     * @return {@link java.util.jar.Manifest}
+     * @see Manifest
+     */
     private Manifest createManifest() {
         Manifest manifest = new Manifest();
         manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
         return manifest;
     }
 
+    /**
+     * Writes generated sources to <var>.jar</var> file
+     *
+     * @param className path of generated sources
+     * @param root <var>.jar</var> root directory
+     * @param jarPath target <var>.jar</var> path.
+     * @throws ImplerException if can't write <var>.jar</var> file
+     * @see Path
+     */
     private void dumpJar(Path className, Path root, Path jarPath) throws ImplerException {
         className = className.normalize();
         root = root.normalize();
@@ -71,6 +98,15 @@ public class JarImplementor extends Implementor implements JarImpler {
         }
     }
 
+    /**
+     * Generates interface or class and dumps it into <var>.jar</var> file
+     *
+     * @param token type token to create implementation for.
+     * @param jarFile target <var>.jar</var> file.
+     * @throws ImplerException if token can't be implemented
+     *
+     * @see info.kgeorgiy.java.advanced.implementor.JarImpler
+     */
     @Override
     public void implementJar(Class<?> token, Path jarFile) throws ImplerException {
         Path temp = Paths.get(System.getProperty("java.io.tmpdir"));
@@ -88,11 +124,24 @@ public class JarImplementor extends Implementor implements JarImpler {
         }
     }
 
+    /**
+     * Entry point of the program. Command line arguments are processed here
+     * <p>
+     * Usage:
+     * <ul>
+     * <li>{@code java -cp . -p . -m ru.ifmo.rain.korobkov.implementor/
+     * ru.ifmo.rain.korobkov.implementor.JarImplementor -jar <code>classname</code> <code>path</code>}</li>
+     * </ul>
+     *
+     * @param args command line arguments.
+     * @see Implementor
+     */
     public static void main(String[] args) {
         JarImplementor implementor = new JarImplementor();
 
         if (args == null || args.length != 3 || !"-jar".equals(args[0]) || args[1] == null || args[2] == null) {
-            System.out.println("Usage: java -cp . -p . -m ru.ifmo.rain.korobkov.implementor/ru.ifmo.rain.korobkov.implementor.JarImplementor -jar <class name> <path>");
+            System.out.println("Usage: java -cp . -p . -m ru.ifmo.rain.korobkov.implementor/" +
+                    "ru.ifmo.rain.korobkov.implementor.JarImplementor -jar <class name> <path>");
             return;
         }
 
