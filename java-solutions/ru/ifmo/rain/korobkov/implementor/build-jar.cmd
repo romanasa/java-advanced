@@ -1,8 +1,13 @@
 mkdir _build
-javac -p ../../../../../../../java-advanced-2020/artifacts/info.kgeorgiy.java.advanced.implementor.jar;^
-../../../../../../../java-advanced-2020/artifacts/info.kgeorgiy.java.advanced.base.jar;^
-../../../../../../../java-advanced-2020/lib/junit-4.11.jar^
-			-d _build/ Implementor.java JarImplementor.java module-info.java
+
+cd ../../../../../
+
+javac -p ../../java-advanced-2020/artifacts/info.kgeorgiy.java.advanced.implementor.jar;^
+../../java-advanced-2020/artifacts/info.kgeorgiy.java.advanced.base.jar;^
+../../java-advanced-2020/lib/junit-4.11.jar^
+			-d ru/ifmo/rain/korobkov/implementor/_build/ ru/ifmo/rain/korobkov/implementor/*.java module-info.java
+			
+cd ru/ifmo/rain/korobkov/implementor
 							  
 echo Manifest-Version: 1.0 > _build/MANIFEST.TXT
 echo Class-Path: ../../../../../../../java-advanced-2020/artifacts/info.kgeorgiy.java.advanced.implementor.jar >> _build/MANIFEST.TXT 
