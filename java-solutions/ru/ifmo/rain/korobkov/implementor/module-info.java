@@ -1,8 +1,8 @@
 /**
- * Tests for <a href="https://www.kgeorgiy.info/courses/java-advanced/homeworks.html#homework-arrayset">ArraySet</a> homework
+ * Solutions for <a href="https://www.kgeorgiy.info/courses/java-advanced/homeworks.html#homework-implementor">Implementor</a> homework
  * of <a href="https://www.kgeorgiy.info/courses/java-advanced/">Java Advanced</a> course.
  *
- * @author Georgiy Korneev (kgeorgiy@kgeorgiy.info)
+ * @author Roman Korobkov
  */
 module ru.ifmo.rain.korobkov.implementor {
 	requires transitive info.kgeorgiy.java.advanced.implementor;
