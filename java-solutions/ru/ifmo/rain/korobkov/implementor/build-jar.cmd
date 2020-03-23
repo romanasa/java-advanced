@@ -5,10 +5,11 @@ javac -p ../../../../../../../java-advanced-2020/artifacts/info.kgeorgiy.java.ad
 			-d _build/ Implementor.java JarImplementor.java module-info.java
 							  
 echo Manifest-Version: 1.0 > _build/MANIFEST.TXT
-echo Main-Class: ru.ifmo.rain.korobkov.implementor.Implementor >> _build/MANIFEST.TXT
 echo Class-Path: ../../../../../../../java-advanced-2020/artifacts/info.kgeorgiy.java.advanced.implementor.jar >> _build/MANIFEST.TXT 
 
 cd _build
-jar cfm ../_implementor.jar MANIFEST.TXT *.class ru/ifmo/rain/korobkov/implementor/*.class
+jar cfem ../_implementor.jar ru.ifmo.rain.korobkov.implementor.Implementor MANIFEST.TXT *.class ru/ifmo/rain/korobkov/implementor/*.class 
 cd ..
+RD /S /Q _build
+
 

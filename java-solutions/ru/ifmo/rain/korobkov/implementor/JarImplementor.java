@@ -92,7 +92,7 @@ public class JarImplementor extends Implementor implements JarImpler {
         JarImplementor implementor = new JarImplementor();
 
         if (args == null || args.length != 3 || !"-jar".equals(args[0]) || args[1] == null || args[2] == null) {
-            System.out.println("Usage: java JarImplementor -jar <class name> <path>");
+            System.out.println("Usage: java -cp . -p . -m ru.ifmo.rain.korobkov.implementor/ru.ifmo.rain.korobkov.implementor.JarImplementor -jar <class name> <path>");
             return;
         }
 

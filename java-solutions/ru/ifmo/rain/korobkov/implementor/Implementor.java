@@ -362,7 +362,7 @@ public class Implementor implements Impler {
         Implementor implementor = new Implementor();
 
         if (args == null || args.length != 2 || args[0] == null || args[1] == null) {
-            System.out.println("Usage: java Implementor <class name> <path>");
+            System.out.println("Usage: java -cp . -p . -m ru.ifmo.rain.korobkov.implementor <class name> <path>");
             return;
         }
 
