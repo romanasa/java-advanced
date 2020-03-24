@@ -11,9 +11,8 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -25,6 +24,40 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 public class JarImplementor extends Implementor implements JarImpler {
+
+    private final static Cleaner DELETER = new Cleaner();
+
+
+    /**
+     * Static class used for recursive deleting of folders
+     */
+    private static class Cleaner extends SimpleFileVisitor<Path> {
+        Cleaner() {
+            super();
+        }
+
+        @Override
+        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+            Files.delete(file);
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+            Files.delete(dir);
+            return FileVisitResult.CONTINUE;
+        }
+    }
+
+    /**
+     * Recursively deletes directory represented by path
+     *
+     * @param path directory to be recursively deleted
+     * @throws IOException if error occurred during deleting
+     */
+    private static void clean(Path path) throws IOException {
+        Files.walkFileTree(path, DELETER);
+    }
 
     /**
      * Compile generated java sources
@@ -126,6 +159,12 @@ public class JarImplementor extends Implementor implements JarImpler {
             dumpJar(Implementor.getFilePath(token, Paths.get("./"), FileExtension.CLASS), temp, jarFile);
         } catch (IOException e) {
             throw new ImplerException(e);
+        } finally {
+            try {
+                clean(temp);
+            } catch (IOException e) {
+                System.out.println("Unable to delete temp directory: " + e.getMessage());
+            }
         }
     }
 
