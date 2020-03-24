@@ -109,7 +109,12 @@ public class JarImplementor extends Implementor implements JarImpler {
      */
     @Override
     public void implementJar(Class<?> token, Path jarFile) throws ImplerException {
-        Path temp = Paths.get(System.getProperty("java.io.tmpdir"));
+        Path temp;
+        try {
+            temp = Files.createTempDirectory(jarFile.toAbsolutePath().getParent(), "temp");
+        } catch (IOException e) {
+            throw new ImplerException("Unable to create temp directory", e);
+        }
         temp = temp.normalize();
         jarFile = jarFile.normalize();
 
