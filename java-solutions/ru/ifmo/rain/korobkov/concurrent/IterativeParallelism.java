@@ -98,11 +98,17 @@ public class IterativeParallelism implements AdvancedIP {
         for (int i = 0; i < workers.size(); i++) {
             try {
                 workers.get(i).join();
-            } catch (InterruptedException e) {
+            } catch (InterruptedException exception) {
                 for (int j = i + 1; j < workers.size(); j++) {
                     workers.get(j).interrupt();
                 }
-                throw e;
+                for (int j = i + 1; j < workers.size(); j++) {
+                    try {
+                        workers.get(j).join();
+                    } catch (InterruptedException ignored) {
+                    }
+                }
+                throw exception;
             }
         }
     }
