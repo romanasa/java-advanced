@@ -64,19 +64,7 @@ public class IterativeParallelism implements AdvancedIP {
                 stream -> stream.map(f).collect(Collectors.toList()),
                 stream -> stream.flatMap(Collection::stream).collect(Collectors.toList()));
     }
-
-
-    /**
-     * Split values by {@code threads}  threads, compute it separately,
-     * then collect them in right order.
-     *
-     * @param threads number of concurrent threads.
-     * @param values values to calculate.
-     * @param function function to get result from stream of T.
-     * @param collector function to collect result from stream of R.
-     * @return value calculated with {@code threads} threads.
-     * @throws InterruptedException if threads were interrupted.
-     */
+    
     private <T, R> R getValueByFunction(int threads, List<T> values,
                                         Function<Stream<T>, R> function,
                                         Function<Stream<R>, R> collector) throws InterruptedException {
@@ -107,16 +95,15 @@ public class IterativeParallelism implements AdvancedIP {
     }
 
     private void waitThreads(List<Thread> workers) throws InterruptedException {
-        InterruptedException exception = null;
-        for (Thread worker : workers) {
+        for (int i = 0; i < workers.size(); i++) {
             try {
-                worker.join();
+                workers.get(i).join();
             } catch (InterruptedException e){
-                exception = e;
+                for (int j = i + 1; j < workers.size(); j++) {
+                    workers.get(j).interrupt();
+                }
+                throw e;
             }
-        }
-        if (exception != null) {
-            throw exception;
         }
     }
 
