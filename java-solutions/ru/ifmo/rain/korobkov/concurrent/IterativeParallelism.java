@@ -64,7 +64,7 @@ public class IterativeParallelism implements AdvancedIP {
                 stream -> stream.map(f).collect(Collectors.toList()),
                 stream -> stream.flatMap(Collection::stream).collect(Collectors.toList()));
     }
-    
+
     private <T, R> R getValueByFunction(int threads, List<T> values,
                                         Function<Stream<T>, R> function,
                                         Function<Stream<R>, R> collector) throws InterruptedException {
@@ -98,7 +98,7 @@ public class IterativeParallelism implements AdvancedIP {
         for (int i = 0; i < workers.size(); i++) {
             try {
                 workers.get(i).join();
-            } catch (InterruptedException e){
+            } catch (InterruptedException e) {
                 for (int j = i + 1; j < workers.size(); j++) {
                     workers.get(j).interrupt();
                 }
@@ -180,16 +180,6 @@ public class IterativeParallelism implements AdvancedIP {
     }
 
     /**
-     * Create function for reducing elements
-     *
-     * @param monoid monoid to use
-     * @return lambda function for reducing
-     */
-    private <T> Function<Stream<T>, T> getReduceFunction(Monoid<T> monoid) {
-        return tStream -> tStream.reduce(monoid.getIdentity(), monoid.getOperator());
-    }
-
-    /**
      * Reduces values using monoid.
      *
      * @param threads number of concurrent threads.
@@ -201,8 +191,7 @@ public class IterativeParallelism implements AdvancedIP {
      */
     @Override
     public <T> T reduce(int threads, List<T> values, Monoid<T> monoid) throws InterruptedException {
-        Function<Stream<T>, T> reduceFunction = getReduceFunction(monoid);
-        return getValueByFunction(threads, values, reduceFunction, reduceFunction);
+        return mapReduce(threads, values, Function.identity(), monoid);
     }
 
     /**
@@ -219,6 +208,7 @@ public class IterativeParallelism implements AdvancedIP {
     public <T, R> R mapReduce(int threads, List<T> values, Function<T, R> lift, Monoid<R> monoid) throws InterruptedException {
         Function<Stream<T>, R> mapReduceFunction = tStream -> tStream.reduce(monoid.getIdentity(),
                 (partial, val) -> monoid.getOperator().apply(partial, lift.apply(val)), monoid.getOperator());
-        return getValueByFunction(threads, values, mapReduceFunction, getReduceFunction(monoid));
+        return getValueByFunction(threads, values, mapReduceFunction,
+                tStream -> tStream.reduce(monoid.getIdentity(), monoid.getOperator()));
     }
 }
