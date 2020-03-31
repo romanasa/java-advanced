@@ -81,16 +81,7 @@ public class IterativeParallelism implements AdvancedIP {
                                         Function<Stream<T>, R> function,
                                         Function<Stream<R>, R> collector) throws InterruptedException {
         threads = Math.min(threads, values.size());
-        int block = values.size() / threads;
-        int add = values.size() % threads;
-
-        List<Stream<T>> parts = new ArrayList<>();
-        for (int i = 0; i * block + Math.min(i, add) < values.size(); i++) {
-            int l = i * block + Math.min(i, add);
-            int r = l + block + (i < add ? 1 : 0);
-            parts.add(values.subList(l, r).stream());
-        }
-
+        List<Stream<T>> parts = getParts(values, threads);
         List<Thread> workers = new ArrayList<>();
         List<R> result = new ArrayList<>(Collections.nCopies(threads, null));
         for (int i = 0; i < threads; i++) {
@@ -99,10 +90,34 @@ public class IterativeParallelism implements AdvancedIP {
             workers.add(thread);
             thread.start();
         }
-        for (int i = 0; i < threads; i++) {
-            workers.get(i).join();
-        }
+        waitThreads(workers);
         return collector.apply(result.stream());
+    }
+
+    private <T> List<Stream<T>> getParts(List<T> values, int threads) {
+        int block = values.size() / threads;
+        int add = values.size() % threads;
+        List<Stream<T>> parts = new ArrayList<>();
+        for (int i = 0; i * block + Math.min(i, add) < values.size(); i++) {
+            int l = i * block + Math.min(i, add);
+            int r = l + block + (i < add ? 1 : 0);
+            parts.add(values.subList(l, r).stream());
+        }
+        return parts;
+    }
+
+    private void waitThreads(List<Thread> workers) throws InterruptedException {
+        InterruptedException exception = null;
+        for (Thread worker : workers) {
+            try {
+                worker.join();
+            } catch (InterruptedException e){
+                exception = e;
+            }
+        }
+        if (exception != null) {
+            throw exception;
+        }
     }
 
     /**
