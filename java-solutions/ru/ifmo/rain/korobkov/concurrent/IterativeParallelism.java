@@ -65,13 +65,13 @@ public class IterativeParallelism implements AdvancedIP {
                 this::collectListFunction);
     }
 
-    private<T> List<T> collectListFunction(final Stream<List<T>> stream) {
+    private<T> List<T> collectListFunction(final Stream<? extends List<T>> stream) {
         return stream.flatMap(Collection::stream).collect(Collectors.toList());
     }
 
     private <T, R> R getValueByFunction(int threads, final List<? extends T> values,
-                                        final Function<Stream<? extends T>, ? extends R> function,
-                                        final Function<Stream<? extends R>, R> collector) throws InterruptedException {
+                                        final Function<Stream<? extends T>, R> function,
+                                        final Function<Stream<R>, R> collector) throws InterruptedException {
         threads = Math.min(threads, values.size());
         final List<Stream<? extends T>> parts = getParts(values, threads);
         final List<R> result = new ArrayList<>(Collections.nCopies(threads, null));
@@ -101,26 +101,29 @@ public class IterativeParallelism implements AdvancedIP {
     }
 
     private void waitThreads(final List<Thread> workers) throws InterruptedException {
+        InterruptedException exception = null;
         for (int i = 0; i < workers.size(); i++) {
             try {
                 workers.get(i).join();
-            } catch (final InterruptedException exception) {
-                for (int j = i + 1; j < workers.size(); j++) {
-                    workers.get(j).interrupt();
-                }
-                for (int j = i + 1; j < workers.size(); j++) {
-                    try {
-                        workers.get(j).join();
-                    } catch (final InterruptedException ignored) {
+            } catch (final InterruptedException e) {
+                if (exception == null) {
+                    exception = e;
+                    for (int j = i; j < workers.size(); j++) {
+                        workers.get(j).interrupt();
                     }
+                } else {
+                    exception.addSuppressed(e);
                 }
-                throw exception;
+                i--;
             }
+        }
+        if (exception != null) {
+            throw exception;
         }
     }
 
     /**
-     * Computes the maximum value for <var>? extends T</var> type.
+     * Computes the maximum value.
      *
      * @param threads number or concurrent threads.
      * @param values values to get maximum of.
@@ -130,21 +133,13 @@ public class IterativeParallelism implements AdvancedIP {
      */
     @Override
     public <T> T maximum(final int threads, final List<? extends T> values, final Comparator<? super T> comparator) throws InterruptedException {
-        return maximum_impl(threads, values, comparator);
+        return this.<T, T>getValueByFunction(threads, values,
+                stream -> getT(comparator, stream),
+                stream -> getT(comparator, stream));
     }
 
-    /**
-     * Computes the maximum value
-     *
-     * @param threads number or concurrent threads.
-     * @param values values to get maximum of.
-     * @param comparator value comparator.
-     * @return maximum value.
-     * @throws InterruptedException if threads were interrupted.
-     */
-    private <T> T maximum_impl(final int threads, final List<T> values, final Comparator<? super T> comparator) throws InterruptedException {
-        final Function<Stream<? extends T>, T> maxFunction = stream -> stream.max(comparator).orElse(null);
-        return this.<T, T>getValueByFunction(threads, values, maxFunction, maxFunction);
+    private <T> T getT(Comparator<? super T> comparator, Stream<? extends T> stream) {
+        return stream.max(comparator).orElse(null);
     }
 
     /**
@@ -218,9 +213,11 @@ public class IterativeParallelism implements AdvancedIP {
      */
     @Override
     public <T, R> R mapReduce(final int threads, final List<T> values, final Function<T, R> lift, final Monoid<R> monoid) throws InterruptedException {
-        final Function<Stream<T>, R> mapReduceFunction = tStream -> tStream.reduce(monoid.getIdentity(),
-                (partial, val) -> monoid.getOperator().apply(partial, lift.apply(val)), monoid.getOperator());
-        return getValueByFunction(threads, values, mapReduceFunction,
-                tStream -> tStream.reduce(monoid.getIdentity(), monoid.getOperator()));
+        return getValueByFunction(threads,
+                values,
+                tStream -> tStream.reduce(monoid.getIdentity(),
+                        (partial, val) -> monoid.getOperator().apply(partial, lift.apply(val)),
+                        monoid.getOperator()),
+                rStream -> rStream.reduce(monoid.getIdentity(), monoid.getOperator()));
     }
 }
