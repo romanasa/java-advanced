@@ -44,7 +44,7 @@ public class IterativeParallelism implements AdvancedIP {
     @Override
     public <T> List<T> filter(final int threads, final List<? extends T> values, final Predicate<? super T> predicate) throws InterruptedException {
         return getValueByFunction(threads, values,
-                stream -> stream.filter(predicate).collect(Collectors.toList()),
+                stream -> collectStreamToList(stream.filter(predicate)),
                 this::collectListFunction);
     }
 
@@ -61,8 +61,12 @@ public class IterativeParallelism implements AdvancedIP {
     @Override
     public <T, U> List<U> map(final int threads, final List<? extends T> values, final Function<? super T, ? extends U> f) throws InterruptedException {
         return getValueByFunction(threads, values,
-                stream -> stream.map(f).collect(Collectors.toList()),
+                stream -> collectStreamToList(stream.map(f)),
                 this::collectListFunction);
+    }
+
+    private <T> List<T> collectStreamToList(Stream<? extends T> stream) {
+        return stream.collect(Collectors.toList());
     }
 
     private<T> List<T> collectListFunction(final Stream<? extends List<T>> stream) {
