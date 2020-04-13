@@ -69,14 +69,14 @@ public class ParallelMapperImpl implements ParallelMapper {
         private final Function<? super T, ? extends R> f;
         private volatile boolean terminated = false;
 
-        private int notStarted;
-        private int alive;
+        private int runned;
+        private int completed;
 
         public Task(final Function<? super T, ? extends R> f, final List<? extends T> args) {
             result = new SynchronizedList(args.size());
             this.f = f;
-            notStarted = args.size();
-            alive = args.size();
+            runned = 0;
+            completed = 0;
 
             IntStream.range(0, args.size())
                     .<Runnable>mapToObj(i -> () -> result.set(i, args.get(i)))
@@ -85,16 +85,16 @@ public class ParallelMapperImpl implements ParallelMapper {
 
         public synchronized Runnable remove() {
             final Runnable runnable = queue.remove();
-            notStarted--;
-            if (notStarted == 0) {
+            runned++;
+            if (runned == result.data.size()) {
                 taskQueue.remove();
             }
             return runnable;
         }
 
         public synchronized void finish() {
-            alive--;
-            if (alive == 0) {
+            completed++;
+            if (completed == result.data.size()) {
                 terminate();
             }
         }
@@ -107,9 +107,6 @@ public class ParallelMapperImpl implements ParallelMapper {
         public synchronized List<R> getResult() throws InterruptedException {
             while (!terminated) {
                 wait();
-            }
-            if (!terminated) {
-                terminate();
             }
             return result.get();
         }

@@ -88,22 +88,24 @@ public class IterativeParallelism implements AdvancedIP {
                                         final Function<Stream<R>, R> collector) throws InterruptedException {
         threads = Math.min(threads, values.size());
         final List<Stream<? extends T>> parts = getParts(values, threads);
-
-        final List<R> result;
-        if (mapper == null) {
-            result = new ArrayList<>(Collections.nCopies(threads, null));
-            final List<Thread> workers = new ArrayList<>();
-            for (int i = 0; i < threads; i++) {
-                final int finalI = i;
-                final Thread thread = new Thread(() -> result.set(finalI, function.apply(parts.get(finalI))));
-                workers.add(thread);
-                thread.start();
-            }
-            waitThreads(workers, true);
-        } else {
-            result = mapper.map(function, parts);
-        }
+        final List<R> result = mapper == null
+                ? map(threads, function, parts)
+                : mapper.map(function, parts);
         return collector.apply(result.stream());
+    }
+
+    private <T, R> List<R> map(final int threads, final Function<Stream<? extends T>, R> function, final List<Stream<? extends T>> parts) throws InterruptedException {
+        final List<R> result;
+        result = new ArrayList<>(Collections.nCopies(threads, null));
+        final List<Thread> workers = new ArrayList<>();
+        for (int i = 0; i < threads; i++) {
+            final int finalI = i;
+            final Thread thread = new Thread(() -> result.set(finalI, function.apply(parts.get(finalI))));
+            workers.add(thread);
+            thread.start();
+        }
+        waitThreads(workers, true);
+        return result;
     }
 
     private <T> List<Stream<? extends T>> getParts(final List<? extends T> values, final int threads) {
