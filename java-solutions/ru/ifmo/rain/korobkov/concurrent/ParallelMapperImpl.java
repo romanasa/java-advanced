@@ -161,7 +161,6 @@ public class ParallelMapperImpl implements ParallelMapper {
     }
 
 
-
     /**
      * Maps function {@code f} over specified {@code args}.
      *
@@ -187,7 +186,7 @@ public class ParallelMapperImpl implements ParallelMapper {
         workers.forEach(Thread::interrupt);
         taskQueue.queue.forEach(Task::terminate);
         try {
-            IterativeParallelism.waitThreads(workers);
+            IterativeParallelism.waitThreads(workers, false);
         } catch (final InterruptedException e) {
             e.printStackTrace();
         }

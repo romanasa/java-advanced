@@ -17,6 +17,10 @@ import java.util.stream.Stream;
 public class IterativeParallelism implements AdvancedIP {
     private final ParallelMapper mapper;
 
+    public IterativeParallelism() {
+        mapper = null;
+    }
+
     public IterativeParallelism(final ParallelMapper mapper) {
         this.mapper = mapper;
     }
@@ -95,7 +99,7 @@ public class IterativeParallelism implements AdvancedIP {
                 workers.add(thread);
                 thread.start();
             }
-            waitThreads(workers);
+            waitThreads(workers, true);
         } else {
             result = mapper.map(function, parts);
         }
@@ -114,7 +118,7 @@ public class IterativeParallelism implements AdvancedIP {
         return parts;
     }
 
-    static void waitThreads(final List<Thread> workers) throws InterruptedException {
+    static void waitThreads(final List<Thread> workers, final boolean needTerminate) throws InterruptedException {
         InterruptedException exception = null;
         for (int i = 0; i < workers.size(); i++) {
             try {
@@ -122,8 +126,10 @@ public class IterativeParallelism implements AdvancedIP {
             } catch (final InterruptedException e) {
                 if (exception == null) {
                     exception = e;
-                    for (int j = i; j < workers.size(); j++) {
-                        workers.get(j).interrupt();
+                    if (needTerminate) {
+                        for (int j = i; j < workers.size(); j++) {
+                            workers.get(j).interrupt();
+                        }
                     }
                 } else {
                     exception.addSuppressed(e);
