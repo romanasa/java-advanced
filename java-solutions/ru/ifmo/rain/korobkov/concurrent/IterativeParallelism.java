@@ -1,6 +1,7 @@
 package ru.ifmo.rain.korobkov.concurrent;
 
 import info.kgeorgiy.java.advanced.concurrent.AdvancedIP;
+import info.kgeorgiy.java.advanced.mapper.ParallelMapper;
 
 import java.util.*;
 import java.util.function.Function;
@@ -14,6 +15,11 @@ import java.util.stream.Stream;
  * @see info.kgeorgiy.java.advanced.concurrent.AdvancedIP
  */
 public class IterativeParallelism implements AdvancedIP {
+    private final ParallelMapper mapper;
+
+    public IterativeParallelism(final ParallelMapper mapper) {
+        this.mapper = mapper;
+    }
 
     /**
      * Join values to string.
@@ -65,7 +71,7 @@ public class IterativeParallelism implements AdvancedIP {
                 this::collectListFunction);
     }
 
-    private <T> List<T> collectStreamToList(Stream<? extends T> stream) {
+    private <T> List<T> collectStreamToList(final Stream<? extends T> stream) {
         return stream.collect(Collectors.toList());
     }
 
@@ -78,17 +84,21 @@ public class IterativeParallelism implements AdvancedIP {
                                         final Function<Stream<R>, R> collector) throws InterruptedException {
         threads = Math.min(threads, values.size());
         final List<Stream<? extends T>> parts = getParts(values, threads);
-        final List<R> result = new ArrayList<>(Collections.nCopies(threads, null));
 
-        final List<Thread> workers = new ArrayList<>();
-        for (int i = 0; i < threads; i++) {
-            final int finalI = i;
-            final Thread thread = new Thread(() -> result.set(finalI, function.apply(parts.get(finalI))));
-            workers.add(thread);
-            thread.start();
+        final List<R> result;
+        if (mapper == null) {
+            result = new ArrayList<>(Collections.nCopies(threads, null));
+            final List<Thread> workers = new ArrayList<>();
+            for (int i = 0; i < threads; i++) {
+                final int finalI = i;
+                final Thread thread = new Thread(() -> result.set(finalI, function.apply(parts.get(finalI))));
+                workers.add(thread);
+                thread.start();
+            }
+            waitThreads(workers);
+        } else {
+            result = mapper.map(function, parts);
         }
-
-        waitThreads(workers);
         return collector.apply(result.stream());
     }
 
@@ -104,7 +114,7 @@ public class IterativeParallelism implements AdvancedIP {
         return parts;
     }
 
-    private void waitThreads(final List<Thread> workers) throws InterruptedException {
+    static void waitThreads(final List<Thread> workers) throws InterruptedException {
         InterruptedException exception = null;
         for (int i = 0; i < workers.size(); i++) {
             try {
@@ -142,7 +152,7 @@ public class IterativeParallelism implements AdvancedIP {
                 stream -> getT(comparator, stream));
     }
 
-    private <T> T getT(Comparator<? super T> comparator, Stream<? extends T> stream) {
+    private <T> T getT(final Comparator<? super T> comparator, final Stream<? extends T> stream) {
         return stream.max(comparator).orElse(null);
     }
 
