@@ -20,8 +20,14 @@ public class ParallelMapperImpl implements ParallelMapper {
         IntStream.range(0, threads).mapToObj(i -> new Thread(() -> {
             try {
                 while (!Thread.interrupted()) {
-                    final Runnable runnable = taskQueue.getNextRunnable();
+                    final Task<?, ?> task;
+                    final Runnable runnable;
+                    synchronized (taskQueue) {
+                        task = taskQueue.peek();
+                        runnable = task.poll();
+                    }
                     runnable.run();
+                    task.finish();
                 }
             } catch (final InterruptedException e) {
 //                e.printStackTrace();
@@ -29,11 +35,10 @@ public class ParallelMapperImpl implements ParallelMapper {
                 Thread.currentThread().interrupt();
             }
         })).forEach(workers::add);
-        IntStream.range(0, threads).forEach(i -> workers.get(i).start());
+        workers.forEach(Thread::start);
     }
 
-    private class SynchronizedQueue<T> {
-
+    private static class SynchronizedQueue<T> {
         private final Queue<T> queue = new ArrayDeque<>();
 
         public synchronized void add(final T e) {
@@ -41,31 +46,22 @@ public class ParallelMapperImpl implements ParallelMapper {
             notifyAll();
         }
 
-        public synchronized void remove() {
-            queue.remove();
+        public synchronized void poll() {
+            queue.poll();
         }
 
-        public synchronized T element() throws InterruptedException {
+        public synchronized T peek() throws InterruptedException {
             while (queue.isEmpty()) {
                 wait();
             }
-            return queue.element();
-        }
-
-        public synchronized Runnable getNextRunnable() throws InterruptedException {
-            final Task<?, ?> task = taskQueue.element();
-            final Runnable runnable = task.remove();
-            return () -> {
-                runnable.run();
-                task.finish();
-            };
+            return queue.peek();
         }
     }
 
     private class Task<T, R> {
 
         private final Queue<Runnable> queue = new ArrayDeque<>();
-        private final SynchronizedList result;
+        private final SynchronizedMapList result;
         private final Function<? super T, ? extends R> f;
         private volatile boolean terminated = false;
 
@@ -73,7 +69,7 @@ public class ParallelMapperImpl implements ParallelMapper {
         private int completed;
 
         public Task(final Function<? super T, ? extends R> f, final List<? extends T> args) {
-            result = new SynchronizedList(args.size());
+            result = new SynchronizedMapList(args.size());
             this.f = f;
             runned = 0;
             completed = 0;
@@ -83,11 +79,11 @@ public class ParallelMapperImpl implements ParallelMapper {
                     .forEach(queue::add);
         }
 
-        public synchronized Runnable remove() {
-            final Runnable runnable = queue.remove();
+        public synchronized Runnable poll() {
+            final Runnable runnable = queue.poll();
             runned++;
             if (runned == result.data.size()) {
-                taskQueue.remove();
+                taskQueue.poll();
             }
             return runnable;
         }
@@ -101,7 +97,7 @@ public class ParallelMapperImpl implements ParallelMapper {
 
         private void terminate() {
             terminated = true;
-            notifyAll();
+            notify();
         }
 
         public synchronized List<R> getResult() throws InterruptedException {
@@ -111,11 +107,11 @@ public class ParallelMapperImpl implements ParallelMapper {
             return result.get();
         }
 
-        private class SynchronizedList {
+        private class SynchronizedMapList {
             private final List<R> data;
-            private RuntimeException runtimeException;
+            private RuntimeException runtimeException = null;
 
-            SynchronizedList(final int length) {
+            SynchronizedMapList(final int length) {
                 data = new ArrayList<>(Collections.nCopies(length, null));
             }
 
