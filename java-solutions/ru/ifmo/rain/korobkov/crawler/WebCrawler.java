@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class WebCrawler implements Crawler {
     private final Downloader downloader;
@@ -34,37 +35,31 @@ public class WebCrawler implements Crawler {
      */
     @Override
     public Result download(final String url, final int depth) {
-        final List<String> urls = new ArrayList<>();
-        final Map<String, IOException> errors = new ConcurrentHashMap<>();
         final Map<String, Integer> hosts = new ConcurrentHashMap<>();
+        final Map<String, Boolean> used = new ConcurrentHashMap<>();
+        final Map<String, IOException> errors = new ConcurrentHashMap<>();
         final Phaser phaser = new Phaser();
 
         phaser.register();
-        downloadTask(url, phaser, errors, depth, hosts);
+        downloadTask(url, phaser, used, errors, depth, hosts);
         phaser.arriveAndAwaitAdvance();
 
-        errors.entrySet().stream().filter(entry -> entry.getValue() == defaultValue)
-                .map(Map.Entry::getKey).forEach(key -> {
-                    urls.add(key);
-                    errors.remove(key);
-        });
-        return new Result(urls, errors);
+        return new Result(
+                used.keySet().stream().filter(s -> !errors.containsKey(s)).collect(Collectors.toList()),
+                errors);
     }
 
     private void downloadTask(final String url,
                               final Phaser phaser,
+                              final Map<String, Boolean> used,
                               final Map<String, IOException> errors,
                               final int depth,
                               final Map<String, Integer> hosts) {
         phaser.register();
         downloadersPool.submit(() -> {
-            try {
-                final String host = URLUtils.getHost(url);
+            if (used.putIfAbsent(url, Boolean.TRUE) == null) {
                 try {
-                    if (errors.containsKey(url)) {
-                        return;
-                    }
-                    errors.put(url, defaultValue);
+                    final String host = URLUtils.getHost(url);
                     if (hosts.containsKey(host)) {
                         synchronized (hosts) {
                             try {
@@ -79,36 +74,39 @@ public class WebCrawler implements Crawler {
                     } else {
                         hosts.put(host, 1);
                     }
-                    final Document document = downloader.download(url);
-                    synchronized (hosts) {
-                        hosts.put(host, hosts.get(host) - 1);
-                        hosts.notifyAll();
+
+                    try {
+                        final Document document = downloader.download(url);
+                        if (depth > 1) {
+                            extractTask(url, phaser, used, errors, depth, hosts, document);
+                        }
+                    } catch (final IOException e) {
+                        errors.put(url, e);
+                    } finally {
+                        synchronized (hosts) {
+                            hosts.put(host, hosts.get(host) - 1);
+                            hosts.notifyAll();
+                        }
                     }
-                    if (depth > 1) {
-                        extractTask(url, phaser, errors, depth, hosts, document);
-                    }
-                } catch (final IOException e) {
-                    errors.put(url, e);
-                    synchronized (hosts) {
-                        hosts.put(host, hosts.get(host) - 1);
-                        hosts.notifyAll();
-                    }
+                } catch (final MalformedURLException e) {
+                    //
                 }
-            } catch (final MalformedURLException e) {
-                //
-            } finally {
-                phaser.arrive();
             }
+            phaser.arrive();
         });
     }
 
-    private void extractTask(final String url, final Phaser phaser,
-                             final Map<String, IOException> errors, final int depth, final Map<String, Integer> hosts,
+    private void extractTask(final String url,
+                             final Phaser phaser,
+                             final Map<String, Boolean> used,
+                             final Map<String, IOException> errors,
+                             final int depth,
+                             final Map<String, Integer> hosts,
                              final Document document) {
         phaser.register();
         extractorsPool.submit(() -> {
             try {
-                document.extractLinks().forEach(newUrl -> downloadTask(newUrl, phaser, errors, depth - 1, hosts));
+                document.extractLinks().forEach(newUrl -> downloadTask(newUrl, phaser, used, errors, depth - 1, hosts));
             } catch (final IOException e) {
                 errors.put(url, e);
             } finally {
