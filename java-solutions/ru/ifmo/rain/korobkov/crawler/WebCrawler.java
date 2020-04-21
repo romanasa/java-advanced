@@ -5,11 +5,8 @@ import info.kgeorgiy.java.advanced.crawler.*;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class WebCrawler implements Crawler {
@@ -17,7 +14,6 @@ public class WebCrawler implements Crawler {
     private final ExecutorService downloadersPool;
     private final ExecutorService extractorsPool;
     private final int perHost;
-    private final IOException defaultValue = new IOException();
 
     public WebCrawler(final Downloader downloader, final int downloaders, final int extractors, final int perHost) {
         this.downloader = downloader;
@@ -35,7 +31,7 @@ public class WebCrawler implements Crawler {
      */
     @Override
     public Result download(final String url, final int depth) {
-        final Map<String, Integer> hosts = new ConcurrentHashMap<>();
+        final Map<String, HostLimiter> hosts = new ConcurrentHashMap<>();
         final Map<String, Boolean> used = new ConcurrentHashMap<>();
         final Map<String, IOException> errors = new ConcurrentHashMap<>();
         final Phaser phaser = new Phaser();
@@ -49,30 +45,40 @@ public class WebCrawler implements Crawler {
                 errors);
     }
 
-    private void downloadTask(final String url,
-                              final Phaser phaser,
-                              final Map<String, Boolean> used,
-                              final Map<String, IOException> errors,
-                              final int depth,
-                              final Map<String, Integer> hosts) {
+    private static class HostLimiter {
+        private final int limit;
+        private int connections = 0;
+
+        HostLimiter(final int limit) {
+            this.limit = limit;
+        }
+
+        synchronized void getConnection() throws InterruptedException {
+            while (connections >= limit) {
+                wait();
+            }
+            connections++;
+        }
+
+        synchronized void release() {
+            connections--;
+            notify();
+        }
+    }
+
+    private void downloadTask(final String url, final Phaser phaser, final Map<String, Boolean> used,
+                              final Map<String, IOException> errors, final int depth, final Map<String, HostLimiter> hosts) {
         phaser.register();
         downloadersPool.submit(() -> {
             if (used.putIfAbsent(url, Boolean.TRUE) == null) {
                 try {
                     final String host = URLUtils.getHost(url);
-                    if (hosts.containsKey(host)) {
-                        synchronized (hosts) {
-                            try {
-                                while (hosts.get(host) >= perHost) {
-                                    hosts.wait();
-                                }
-                            } catch (final InterruptedException e) {
-                                return;
-                            }
-                            hosts.put(host, hosts.get(host) + 1);
-                        }
-                    } else {
-                        hosts.put(host, 1);
+                    final HostLimiter hostLimiter = hosts.computeIfAbsent(host, key -> new HostLimiter(perHost));
+
+                    try {
+                        hostLimiter.getConnection();
+                    } catch (final InterruptedException e) {
+                        return;
                     }
 
                     try {
@@ -83,10 +89,7 @@ public class WebCrawler implements Crawler {
                     } catch (final IOException e) {
                         errors.put(url, e);
                     } finally {
-                        synchronized (hosts) {
-                            hosts.put(host, hosts.get(host) - 1);
-                            hosts.notifyAll();
-                        }
+                        hostLimiter.release();
                     }
                 } catch (final MalformedURLException e) {
                     //
@@ -96,12 +99,8 @@ public class WebCrawler implements Crawler {
         });
     }
 
-    private void extractTask(final String url,
-                             final Phaser phaser,
-                             final Map<String, Boolean> used,
-                             final Map<String, IOException> errors,
-                             final int depth,
-                             final Map<String, Integer> hosts,
+    private void extractTask(final String url, final Phaser phaser, final Map<String, Boolean> used,
+                             final Map<String, IOException> errors, final int depth, final Map<String, HostLimiter> hosts,
                              final Document document) {
         phaser.register();
         extractorsPool.submit(() -> {
@@ -131,6 +130,7 @@ public class WebCrawler implements Crawler {
         try {
             if (!pool.awaitTermination(1, TimeUnit.MINUTES)) {
                 pool.shutdownNow();
+                pool.awaitTermination(1, TimeUnit.MINUTES);
             }
         } catch (final InterruptedException e) {
             pool.shutdownNow();
