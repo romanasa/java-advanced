@@ -116,9 +116,9 @@ public class ParallelMapperImpl implements ParallelMapper {
             }
 
             private void set(final int pos, final T value) {
-                if (terminated) {
-                    return;
-                }
+//                if (terminated) {
+//                    return;
+//                }
                 try {
                     setByIndex(pos, f.apply(value));
                 } catch (final RuntimeException e) {
@@ -127,9 +127,9 @@ public class ParallelMapperImpl implements ParallelMapper {
             }
 
             private synchronized void setByIndex(final int pos, final R value) {
-                if (terminated) {
-                    return;
-                }
+//                if (terminated) {
+//                    return;
+//                }
                 data.set(pos, value);
             }
 
