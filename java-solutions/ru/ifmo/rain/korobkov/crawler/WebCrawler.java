@@ -157,7 +157,8 @@ public class WebCrawler implements Crawler {
             System.out.println("Downloaded:");
             result.getDownloaded().forEach(System.out::println);
             System.out.println("Errors:");
-            result.getErrors().entrySet().stream().map(entry -> entry.getValue() + " " + entry.getKey()).forEach(System.out::println);
+            result.getErrors().entrySet().stream()
+                    .map(entry -> entry.getValue() + " " + entry.getKey()).forEach(System.out::println);
         } catch (final IOException e) {
             System.out.println(e.getMessage());
         }
