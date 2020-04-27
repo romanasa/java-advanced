@@ -63,7 +63,7 @@ public class WebCrawler implements Crawler {
             this.service = service;
         }
 
-        public synchronized void addTask(final Runnable r) {
+        public synchronized void add(final Runnable r) {
             runnables.add(r);
             tryRun();
         }
@@ -96,7 +96,7 @@ public class WebCrawler implements Crawler {
                         key -> new HostDownloader(perHost, downloadersPool));
 
                 info.phaser.register();
-                hostDownloader.addTask(() -> {
+                hostDownloader.add(() -> {
                     try {
                         final Document document = downloader.download(url);
                         if (depth > 1) {
