@@ -5,7 +5,10 @@ import info.kgeorgiy.java.advanced.crawler.*;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.Paths;
+import java.util.ArrayDeque;
 import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
@@ -31,85 +34,95 @@ public class WebCrawler implements Crawler {
      */
     @Override
     public Result download(final String url, final int depth) {
-        final Map<String, HostLimiter> hosts = new ConcurrentHashMap<>();
-        final Map<String, Boolean> used = new ConcurrentHashMap<>();
-        final Map<String, IOException> errors = new ConcurrentHashMap<>();
-        final Phaser phaser = new Phaser();
+        final CrawlerInfo crawlerInfo = new CrawlerInfo();
 
-        phaser.register();
-        downloadTask(url, phaser, used, errors, depth, hosts);
-        phaser.arriveAndAwaitAdvance();
+        crawlerInfo.phaser.register();
+        downloadTask(url, depth, crawlerInfo);
+        crawlerInfo.phaser.arriveAndAwaitAdvance();
 
         return new Result(
-                used.keySet().stream().filter(s -> !errors.containsKey(s)).collect(Collectors.toList()),
-                errors);
+                crawlerInfo.used.stream().filter(s -> !crawlerInfo.errors.containsKey(s)).collect(Collectors.toList()),
+                crawlerInfo.errors);
     }
 
-    private static class HostLimiter {
+    private static class CrawlerInfo {
+        final Map<String, HostDownloader> hosts = new ConcurrentHashMap<>();
+        final Set<String> used = ConcurrentHashMap.newKeySet();
+        final Map<String, IOException> errors = new ConcurrentHashMap<>();
+        final Phaser phaser = new Phaser();
+    }
+
+    private static class HostDownloader {
         private final int limit;
+        private final Queue<Runnable> runnables = new ArrayDeque<>();
+        private final ExecutorService service;
         private int connections = 0;
 
-        HostLimiter(final int limit) {
+        public HostDownloader(final int limit, final ExecutorService service) {
             this.limit = limit;
+            this.service = service;
         }
 
-        synchronized void getConnection() throws InterruptedException {
-            while (connections >= limit) {
-                wait();
+        public synchronized void addTask(final Runnable r) {
+            runnables.add(r);
+            tryRun();
+        }
+
+        private synchronized void tryRun() {
+            if (!runnables.isEmpty() && connections < limit) {
+                final Runnable runnable = runnables.poll();
+                connections++;
+                service.submit(() -> {
+                    try {
+                        runnable.run();
+                    } finally {
+                        release();
+                    }
+                });
             }
-            connections++;
         }
 
-        synchronized void release() {
+        private synchronized void release() {
             connections--;
-            notify();
+            tryRun();
         }
     }
 
-    private void downloadTask(final String url, final Phaser phaser, final Map<String, Boolean> used,
-                              final Map<String, IOException> errors, final int depth, final Map<String, HostLimiter> hosts) {
-        phaser.register();
-        downloadersPool.submit(() -> {
-            if (used.putIfAbsent(url, Boolean.TRUE) == null) {
-                try {
-                    final String host = URLUtils.getHost(url);
-                    final HostLimiter hostLimiter = hosts.computeIfAbsent(host, key -> new HostLimiter(perHost));
+    private void downloadTask(final String url, final int depth, final CrawlerInfo info) {
+        if (info.used.add(url)) {
+            try {
+                final String host = URLUtils.getHost(url);
+                final HostDownloader hostDownloader = info.hosts.computeIfAbsent(host,
+                        key -> new HostDownloader(perHost, downloadersPool));
 
-                    try {
-                        hostLimiter.getConnection();
-                    } catch (final InterruptedException e) {
-                        return;
-                    }
-
+                info.phaser.register();
+                hostDownloader.addTask(() -> {
                     try {
                         final Document document = downloader.download(url);
                         if (depth > 1) {
-                            extractTask(url, phaser, used, errors, depth, hosts, document);
+                            extractTask(url, depth, info, document);
                         }
                     } catch (final IOException e) {
-                        errors.put(url, e);
+                        info.errors.put(url, e);
                     } finally {
-                        hostLimiter.release();
+                        info.phaser.arrive();
                     }
-                } catch (final MalformedURLException e) {
-                    //
-                }
+                });
+            } catch (final MalformedURLException e) {
+                //
             }
-            phaser.arrive();
-        });
+        }
     }
 
-    private void extractTask(final String url, final Phaser phaser, final Map<String, Boolean> used,
-                             final Map<String, IOException> errors, final int depth, final Map<String, HostLimiter> hosts,
-                             final Document document) {
-        phaser.register();
+    private void extractTask(final String url, final int depth, final CrawlerInfo info, final Document document) {
+        info.phaser.register();
         extractorsPool.submit(() -> {
             try {
-                document.extractLinks().forEach(newUrl -> downloadTask(newUrl, phaser, used, errors, depth - 1, hosts));
+                document.extractLinks().forEach(newUrl -> downloadTask(newUrl, depth - 1, info));
             } catch (final IOException e) {
-                errors.put(url, e);
+                info.errors.put(url, e);
             } finally {
-                phaser.arrive();
+                info.phaser.arrive();
             }
         });
     }
