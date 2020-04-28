@@ -37,7 +37,7 @@ public class WebCrawler implements Crawler {
         final CrawlerInfo crawlerInfo = new CrawlerInfo();
 
         crawlerInfo.phaser.register();
-        downloadTask(url, depth, crawlerInfo);
+        crawlerInfo.downloadTask(url, depth);
         crawlerInfo.phaser.arriveAndAwaitAdvance();
 
         return new Result(
@@ -45,11 +45,50 @@ public class WebCrawler implements Crawler {
                 crawlerInfo.errors);
     }
 
-    private static class CrawlerInfo {
+    private class CrawlerInfo {
         final Map<String, HostDownloader> hosts = new ConcurrentHashMap<>();
         final Set<String> used = ConcurrentHashMap.newKeySet();
         final Map<String, IOException> errors = new ConcurrentHashMap<>();
         final Phaser phaser = new Phaser();
+
+        private void downloadTask(final String url, final int depth) {
+            if (used.add(url)) {
+                try {
+                    final String host = URLUtils.getHost(url);
+                    final HostDownloader hostDownloader = hosts.computeIfAbsent(host,
+                            key -> new HostDownloader(perHost, downloadersPool));
+
+                    phaser.register();
+                    hostDownloader.add(() -> {
+                        try {
+                            final Document document = downloader.download(url);
+                            if (depth > 1) {
+                                extractTask(url, depth, document);
+                            }
+                        } catch (final IOException e) {
+                            errors.put(url, e);
+                        } finally {
+                            phaser.arrive();
+                        }
+                    });
+                } catch (final MalformedURLException e) {
+                    //
+                }
+            }
+        }
+
+        private void extractTask(final String url, final int depth, final Document document) {
+            phaser.register();
+            extractorsPool.submit(() -> {
+                try {
+                    document.extractLinks().forEach(newUrl -> downloadTask(newUrl, depth - 1));
+                } catch (final IOException e) {
+                    errors.put(url, e);
+                } finally {
+                    phaser.arrive();
+                }
+            });
+        }
     }
 
     private static class HostDownloader {
@@ -86,45 +125,6 @@ public class WebCrawler implements Crawler {
             connections--;
             tryRun();
         }
-    }
-
-    private void downloadTask(final String url, final int depth, final CrawlerInfo info) {
-        if (info.used.add(url)) {
-            try {
-                final String host = URLUtils.getHost(url);
-                final HostDownloader hostDownloader = info.hosts.computeIfAbsent(host,
-                        key -> new HostDownloader(perHost, downloadersPool));
-
-                info.phaser.register();
-                hostDownloader.add(() -> {
-                    try {
-                        final Document document = downloader.download(url);
-                        if (depth > 1) {
-                            extractTask(url, depth, info, document);
-                        }
-                    } catch (final IOException e) {
-                        info.errors.put(url, e);
-                    } finally {
-                        info.phaser.arrive();
-                    }
-                });
-            } catch (final MalformedURLException e) {
-                //
-            }
-        }
-    }
-
-    private void extractTask(final String url, final int depth, final CrawlerInfo info, final Document document) {
-        info.phaser.register();
-        extractorsPool.submit(() -> {
-            try {
-                document.extractLinks().forEach(newUrl -> downloadTask(newUrl, depth - 1, info));
-            } catch (final IOException e) {
-                info.errors.put(url, e);
-            } finally {
-                info.phaser.arrive();
-            }
-        });
     }
 
     /**
