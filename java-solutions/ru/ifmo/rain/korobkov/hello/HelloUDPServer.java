@@ -12,14 +12,23 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class HelloUDPServer implements HelloServer {
+    public static final int TIMEOUT_MILLISECONDS = 1000;
     private DatagramSocket socket = null;
     private ExecutorService workers = null;
     private volatile boolean closed = false;
 
     private void run() {
+        final DatagramPacket buff;
+        try {
+            buff = Utils.createPacket(socket);
+        } catch (final SocketException e) {
+            System.err.println("Failed to create buffer");
+            return;
+//            e.printStackTrace();
+        }
         while (!socket.isClosed() && !closed) {
             try {
-                final DatagramPacket packet = Utils.readPacket(socket);
+                final DatagramPacket packet = Utils.readPacket(socket, buff);
                 workers.submit(() -> {
                     if (!socket.isClosed()) {
                         packet.setData(process(Utils.packetToString(packet)).getBytes(StandardCharsets.UTF_8));
@@ -53,7 +62,7 @@ public class HelloUDPServer implements HelloServer {
     public void start(final int port, final int threads) {
         try {
             socket = new DatagramSocket(port);
-            socket.setSoTimeout(1000);
+            socket.setSoTimeout(TIMEOUT_MILLISECONDS);
 
             workers = Executors.newFixedThreadPool(threads + 1);
             workers.submit(this::run);

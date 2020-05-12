@@ -12,6 +12,8 @@ import java.util.stream.IntStream;
 
 public class HelloUDPClient implements HelloClient {
 
+    public static final int TIMEOUT_MILLISECONDS = 500;
+
     /**
      * Runs Hello client.
      *
@@ -27,7 +29,7 @@ public class HelloUDPClient implements HelloClient {
 
         final IntFunction<Callable<Void>> tasks = threadId -> () -> {
             try (final DatagramSocket socket = new DatagramSocket()) {
-                socket.setSoTimeout(500);
+                socket.setSoTimeout(TIMEOUT_MILLISECONDS);
                 final InetSocketAddress serverAddress = new InetSocketAddress(InetAddress.getByName(host), port);
                 final DatagramPacket receivePacket = Utils.createPacket(socket);
 
@@ -38,7 +40,7 @@ public class HelloUDPClient implements HelloClient {
                         while (true) {
                             Utils.sendString(socket, receivePacket, serverAddress, query);
                             try {
-                                final String response = Utils.readString(socket);
+                                final String response = Utils.readString(socket, receivePacket);
                                 if (check(response, threadId, i)) {
                                     result = response;
                                     break;

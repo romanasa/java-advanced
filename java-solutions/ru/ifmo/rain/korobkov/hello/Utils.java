@@ -14,14 +14,13 @@ public class Utils {
         return new String(packet.getData(), packet.getOffset(), packet.getLength(), StandardCharsets.UTF_8);
     }
 
-    public static DatagramPacket readPacket(final DatagramSocket socket) throws IOException {
-        final DatagramPacket packet = createPacket(socket);
+    public static DatagramPacket readPacket(final DatagramSocket socket, final DatagramPacket packet) throws IOException {
         socket.receive(packet);
         return packet;
     }
 
-    public static String readString(final DatagramSocket socket) throws IOException {
-        return packetToString(readPacket(socket));
+    public static String readString(final DatagramSocket socket, final DatagramPacket packet) throws IOException {
+        return packetToString(readPacket(socket, packet));
     }
 
     public static DatagramPacket createPacket(final DatagramSocket socket) throws SocketException {
