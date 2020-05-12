@@ -82,7 +82,7 @@ public class HelloUDPServer implements HelloServer {
             final int threads = Integer.parseInt(args[1]);
             try (final HelloUDPServer helloUDPServer = new HelloUDPServer()) {
                 helloUDPServer.start(port, threads);
-                TimeUnit.MINUTES.sleep(1);
+                TimeUnit.HOURS.sleep(1);
             }
         } catch (final NumberFormatException e) {
             throw new IllegalArgumentException("Expected integer arguments");
