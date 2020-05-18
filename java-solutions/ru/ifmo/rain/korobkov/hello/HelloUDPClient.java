@@ -27,20 +27,29 @@ public class HelloUDPClient implements HelloClient {
     public void run(final String host, final int port, final String prefix, final int threads, final int requests) {
         final ExecutorService threadPool = Executors.newFixedThreadPool(threads);
 
+        final InetSocketAddress serverAddress;
+        try {
+            serverAddress = new InetSocketAddress(InetAddress.getByName(host), port);
+        } catch (final UnknownHostException e) {
+            System.err.println("Unknown host: " + e.getMessage());
+//            e.printStackTrace();
+            return;
+        }
+
         final IntFunction<Callable<Void>> tasks = threadId -> () -> {
             try (final DatagramSocket socket = new DatagramSocket()) {
                 socket.setSoTimeout(TIMEOUT_MILLISECONDS);
-                final InetSocketAddress serverAddress = new InetSocketAddress(InetAddress.getByName(host), port);
-                final DatagramPacket receivePacket = Utils.createPacket(socket);
+                final DatagramPacket requestPacket = new DatagramPacket(new byte[0], 0);
+                final DatagramPacket responsePacket = Utils.createPacket(socket);
 
                 for (int i = 0; i < requests; i++) {
                     try {
                         final String query = createMessage(prefix, threadId, i);
                         String result;
                         while (true) {
-                            Utils.sendString(socket, receivePacket, serverAddress, query);
+                            Utils.sendString(socket, requestPacket, serverAddress, query);
                             try {
-                                final String response = Utils.readString(socket, receivePacket);
+                                final String response = Utils.readString(socket, responsePacket);
                                 if (check(response, threadId, i)) {
                                     result = response;
                                     break;
@@ -55,7 +64,7 @@ public class HelloUDPClient implements HelloClient {
                     }
                 }
 
-            } catch (final UnknownHostException | SocketException e) {
+            } catch (final SocketException e) {
                 e.printStackTrace();
             }
             return null;
@@ -63,7 +72,6 @@ public class HelloUDPClient implements HelloClient {
         IntStream.range(0, threads).mapToObj(tasks).forEach(threadPool::submit);
         Utils.shutdownAndAwaitTermination(threadPool);
     }
-
 
     private boolean check(final String response, final int threadId, final int requestId) {
         return response.matches("[\\D]*" + threadId + "[\\D]*" + requestId + "[\\D]*");

@@ -3,47 +3,42 @@ package ru.ifmo.rain.korobkov.hello;
 import info.kgeorgiy.java.advanced.hello.HelloServer;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.SocketException;
-import java.nio.charset.StandardCharsets;
+import java.net.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
 public class HelloUDPServer implements HelloServer {
-    public static final int TIMEOUT_MILLISECONDS = 1000;
+    public static final int TIMEOUT_HOURS = 1;
     private DatagramSocket socket = null;
     private ExecutorService workers = null;
-    private volatile boolean closed = false;
 
     private void run() {
-        final DatagramPacket buff;
+        final DatagramPacket request;
         try {
-            buff = Utils.createPacket(socket);
+            request = Utils.createPacket(socket);
         } catch (final SocketException e) {
-            System.err.println("Failed to create buffer");
-            return;
+            System.err.println("Unable to create packet");
 //            e.printStackTrace();
+            return;
         }
-        while (!socket.isClosed() && !closed) {
-            try {
-                final DatagramPacket packet = Utils.readPacket(socket, buff);
-                workers.submit(() -> {
-                    if (!socket.isClosed()) {
-                        packet.setData(process(Utils.packetToString(packet)).getBytes(StandardCharsets.UTF_8));
-                        try {
-                            socket.send(packet);
-                        } catch (final IOException e) {
-                            System.err.println("Failed to send message: " + e.getMessage());
-                        }
-                    }
-                });
+        final DatagramPacket responsePacket = new DatagramPacket(new byte[0], 0);
 
-            } catch (final IOException e) {
-                if (!closed) {
-                    System.err.println("Failed to receive message: " + e.getMessage());
+        while (!socket.isClosed()) {
+            try {
+                socket.receive(request);
+                if (!socket.isClosed()) {
+                    final String responseString = process(Utils.packetToString(request));
+                    final InetSocketAddress address = new InetSocketAddress(request.getAddress(), request.getPort());
+                    try {
+                        Utils.sendString(socket, responsePacket, address, responseString);
+                    } catch (final IOException e) {
+                        System.err.println("Failed to send message: " + e.getMessage());
+                    }
                 }
+            } catch (final IOException e) {
+                System.err.println("Failed to receive message: " + e.getMessage());
             }
         }
     }
@@ -62,10 +57,8 @@ public class HelloUDPServer implements HelloServer {
     public void start(final int port, final int threads) {
         try {
             socket = new DatagramSocket(port);
-            socket.setSoTimeout(TIMEOUT_MILLISECONDS);
-
-            workers = Executors.newFixedThreadPool(threads + 1);
-            workers.submit(this::run);
+            workers = Executors.newFixedThreadPool(threads);
+            IntStream.range(0, threads).forEach(i -> workers.submit(this::run));
         } catch (final SocketException e) {
             System.err.println("Failed to create socket: " + e.getMessage());
 //            e.printStackTrace();
@@ -77,12 +70,11 @@ public class HelloUDPServer implements HelloServer {
      */
     @Override
     public void close() {
-        closed = true;
         socket.close();
         Utils.shutdownAndAwaitTermination(workers);
     }
 
-    public static void main(final String[] args) throws InterruptedException {
+    public static void main(final String[] args) {
         if (args == null || args.length != 2) {
             throw new IllegalArgumentException("Usage: java HelloUDPServer <port> <threads>");
         }
@@ -91,7 +83,9 @@ public class HelloUDPServer implements HelloServer {
             final int threads = Integer.parseInt(args[1]);
             try (final HelloUDPServer helloUDPServer = new HelloUDPServer()) {
                 helloUDPServer.start(port, threads);
-                TimeUnit.HOURS.sleep(1);
+                TimeUnit.HOURS.sleep(TIMEOUT_HOURS);
+            } catch (final InterruptedException e) {
+                e.printStackTrace();
             }
         } catch (final NumberFormatException e) {
             throw new IllegalArgumentException("Expected integer arguments");

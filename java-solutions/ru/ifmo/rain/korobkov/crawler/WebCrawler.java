@@ -13,6 +13,7 @@ import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 public class WebCrawler implements Crawler {
+    public static final int TIMEOUT_MINUTES = 1;
     private final Downloader downloader;
     private final ExecutorService downloadersPool;
     private final ExecutorService extractorsPool;
@@ -141,9 +142,9 @@ public class WebCrawler implements Crawler {
 
     private void wait(final ExecutorService pool) {
         try {
-            if (!pool.awaitTermination(1, TimeUnit.MINUTES)) {
+            if (!pool.awaitTermination(TIMEOUT_MINUTES, TimeUnit.MINUTES)) {
                 pool.shutdownNow();
-                pool.awaitTermination(1, TimeUnit.MINUTES);
+                pool.awaitTermination(TIMEOUT_MINUTES, TimeUnit.MINUTES);
             }
         } catch (final InterruptedException e) {
             pool.shutdownNow();

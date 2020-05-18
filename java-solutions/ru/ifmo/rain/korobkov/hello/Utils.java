@@ -14,13 +14,17 @@ public class Utils {
         return new String(packet.getData(), packet.getOffset(), packet.getLength(), StandardCharsets.UTF_8);
     }
 
-    public static DatagramPacket readPacket(final DatagramSocket socket, final DatagramPacket packet) throws IOException {
-        socket.receive(packet);
-        return packet;
+    public static void setStringToPacket(final DatagramPacket packet, final String string, final InetSocketAddress address) {
+        final byte[] bytes = string.getBytes(StandardCharsets.UTF_8);
+        packet.setData(bytes);
+        packet.setLength(bytes.length);
+        packet.setSocketAddress(address);
     }
 
+
     public static String readString(final DatagramSocket socket, final DatagramPacket packet) throws IOException {
-        return packetToString(readPacket(socket, packet));
+        socket.receive(packet);
+        return packetToString(packet);
     }
 
     public static DatagramPacket createPacket(final DatagramSocket socket) throws SocketException {
@@ -30,13 +34,10 @@ public class Utils {
 
 
 
-    public static void sendString(final DatagramSocket socket, final DatagramPacket receivePacket,
+    public static void sendString(final DatagramSocket socket, final DatagramPacket packet,
                                   final InetSocketAddress serverAddress, final String request) throws IOException {
-        final byte[] sendBuffer = request.getBytes(StandardCharsets.UTF_8);
-        receivePacket.setData(sendBuffer);
-        receivePacket.setSocketAddress(serverAddress);
-        socket.send(receivePacket);
-        receivePacket.setData(new byte[socket.getReceiveBufferSize()]);
+        setStringToPacket(packet, request, serverAddress);
+        socket.send(packet);
     }
 
 
