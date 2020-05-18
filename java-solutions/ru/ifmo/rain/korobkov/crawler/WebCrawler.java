@@ -35,22 +35,23 @@ public class WebCrawler implements Crawler {
      */
     @Override
     public Result download(final String url, final int depth) {
-        final CrawlerInfo crawlerInfo = new CrawlerInfo();
-
-        crawlerInfo.phaser.register();
-        crawlerInfo.downloadTask(url, depth);
-        crawlerInfo.phaser.arriveAndAwaitAdvance();
-
-        return new Result(
-                crawlerInfo.used.stream().filter(s -> !crawlerInfo.errors.containsKey(s)).collect(Collectors.toList()),
-                crawlerInfo.errors);
+        return new CrawlerInfo().start(url, depth);
     }
 
     private class CrawlerInfo {
         final Map<String, HostDownloader> hosts = new ConcurrentHashMap<>();
         final Set<String> used = ConcurrentHashMap.newKeySet();
         final Map<String, IOException> errors = new ConcurrentHashMap<>();
-        final Phaser phaser = new Phaser();
+        final Phaser phaser = new Phaser(1);
+
+        public Result start(final String url, final int depth) {
+            downloadTask(url, depth);
+            phaser.arriveAndAwaitAdvance();
+
+            return new Result(
+                    used.stream().filter(s -> !errors.containsKey(s)).collect(Collectors.toList()),
+                    errors);
+        }
 
         private void downloadTask(final String url, final int depth) {
             if (used.add(url)) {
