@@ -30,9 +30,8 @@ public class HelloUDPServer implements HelloServer {
                 socket.receive(request);
                 if (!socket.isClosed()) {
                     final String responseString = process(Utils.packetToString(request));
-                    final InetSocketAddress address = new InetSocketAddress(request.getAddress(), request.getPort());
                     try {
-                        Utils.sendString(socket, responsePacket, address, responseString);
+                        Utils.sendString(socket, responsePacket, request.getSocketAddress(), responseString);
                     } catch (final IOException e) {
                         System.err.println("Failed to send message: " + e.getMessage());
                     }

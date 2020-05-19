@@ -74,6 +74,7 @@ public class HelloUDPClient implements HelloClient {
     }
 
     private boolean check(final String response, final int threadId, final int requestId) {
+        // :NOTE: Переиспользование
         return response.matches("[\\D]*" + threadId + "[\\D]*" + requestId + "[\\D]*");
     }
 

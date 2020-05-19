@@ -3,7 +3,7 @@ package ru.ifmo.rain.korobkov.hello;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
@@ -14,7 +14,7 @@ public class Utils {
         return new String(packet.getData(), packet.getOffset(), packet.getLength(), StandardCharsets.UTF_8);
     }
 
-    public static void setStringToPacket(final DatagramPacket packet, final String string, final InetSocketAddress address) {
+    public static void setStringToPacket(final DatagramPacket packet, final String string, final SocketAddress address) {
         final byte[] bytes = string.getBytes(StandardCharsets.UTF_8);
         packet.setData(bytes);
         packet.setLength(bytes.length);
@@ -35,7 +35,7 @@ public class Utils {
 
 
     public static void sendString(final DatagramSocket socket, final DatagramPacket packet,
-                                  final InetSocketAddress serverAddress, final String request) throws IOException {
+                                  final SocketAddress serverAddress, final String request) throws IOException {
         setStringToPacket(packet, request, serverAddress);
         socket.send(packet);
     }
