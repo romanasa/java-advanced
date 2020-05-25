@@ -7,4 +7,8 @@ module ru.ifmo.rain.korobkov {
     requires info.kgeorgiy.java.advanced.mapper;
     requires info.kgeorgiy.java.advanced.student;
     requires info.kgeorgiy.java.advanced.walk;
+    requires java.rmi;
+    requires org.junit.jupiter.api;
+
+    exports ru.ifmo.rain.korobkov.bank to java.rmi;
 }
