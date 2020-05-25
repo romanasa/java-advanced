@@ -16,11 +16,13 @@ public abstract class AbstractPerson implements Person, Serializable {
 
     @Override
     public String getFirstName() {
+        System.out.println("Getting first name for person with passport = " + passport);
         return firstName;
     }
 
     @Override
     public String getLastName() {
+        System.out.println("Getting last name for person with passport = " + passport);
         return lastName;
     }
 

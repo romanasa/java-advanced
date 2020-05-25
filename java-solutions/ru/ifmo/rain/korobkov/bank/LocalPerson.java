@@ -20,7 +20,7 @@ public class LocalPerson extends AbstractPerson {
         return new ConcurrentHashMap<>(accounts);
     }
 
-    public Account getAccount(final String subId) {
+    public Account getAccount(final String subId)   {
         return accounts.get(subId);
     }
 

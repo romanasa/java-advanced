@@ -1,8 +1,5 @@
 package ru.ifmo.rain.korobkov.bank;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
@@ -10,7 +7,9 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
-
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("Bank Test")
@@ -19,6 +18,18 @@ public class BankTests {
     private static Registry registry;
     private static final int port = 8888;
     private static final String name = String.format("//localhost:%d/bank", port);
+
+    private static final String[][] names = {
+            {"Ivan", "Ivanov", "123456"},
+            {"Petr", "Petrov", "7514123456"},
+            {"Petr", "Ivanov", "654321"},
+    };
+
+    private static final Map<String, List<String>> accounts = Map.of(
+            "123456", Arrays.asList("1", "2", "3"),
+            "7514123456", Arrays.asList("first", "second", "main"),
+            "654321", Arrays.asList("A", "B", "C")
+    );
 
     @BeforeAll
     public static void beforeAll() throws RemoteException {
@@ -36,7 +47,18 @@ public class BankTests {
         final Bank bank = new RemoteBank(port);
         UnicastRemoteObject.exportObject(bank, port);
         registry.rebind(name, bank);
-        System.out.println("Server started");
+        System.out.println("Bank rebinded");
+    }
+
+    @AfterEach
+    public void afterEach() throws RemoteException {
+        try {
+            registry.unbind(name);
+            System.out.println("Bank unbinded");
+        } catch (final NotBoundException e) {
+            System.out.println("Failed to unbind: " + name);
+            e.printStackTrace();
+        }
     }
 
     private Bank getBank() throws RemoteException {
@@ -49,25 +71,73 @@ public class BankTests {
         return bank;
     }
 
-    @Test
-    @DisplayName("createRemotePerson")
-    public void createRemotePerson() throws RemoteException {
-        final Bank bank = getBank();
-        final Person person = bank.createPerson("Ivan",
-                "Ivanov", "123456");
+    private void checkPerson(final Person person, final String firstName, final String lastName,
+                            final String passport) throws RemoteException {
         assertNotNull(person);
-        assertEquals("Ivan", person.getFirstName());
-        assertEquals("Ivanov", person.getLastName());
-        assertEquals("123456", person.getPassport());
+        assertEquals(firstName, person.getFirstName());
+        assertEquals(lastName, person.getLastName());
+        assertEquals(passport, person.getPassport());
+    }
+
+    private void checkLocalPerson(final Bank bank, final String firstName, final String lastName,
+                                 final String passport) throws RemoteException {
+        final Person person = bank.getLocalPerson(passport);
+        checkPerson(person, firstName, lastName, passport);
+    }
+
+    private void checkRemotePerson(final Bank bank, final String firstName, final String lastName,
+                                 final String passport) throws RemoteException {
+        final Person person = bank.getRemotePerson(passport);
+        checkPerson(person, firstName, lastName, passport);
+    }
+
+    private void createPersons(final Bank bank) throws RemoteException {
+        for (final String[] data : names) {
+            final Person person = bank.createPerson(data[0], data[1], data[2]);
+            checkPerson(person, data[0], data[1], data[2]);
+        }
+    }
+
+    @Test
+    @DisplayName("createPerson")
+    public void createPerson() throws RemoteException {
+        final Bank bank = getBank();
+        createPersons(bank);
+    }
+
+    @Test
+    @DisplayName("getRemotePerson")
+    public void getRemotePerson() throws RemoteException {
+        final Bank bank = getBank();
+        createPersons(bank);
+        for (final String[] data: names) {
+            checkRemotePerson(bank, data[0], data[1], data[2]);
+        }
+    }
+
+    @Test
+    @DisplayName("getLocalPerson")
+    public void getLocalPerson() throws RemoteException {
+        final Bank bank = getBank();
+        createPersons(bank);
+        for (final String[] data: names) {
+            checkLocalPerson(bank, data[0], data[1], data[2]);
+        }
+    }
+
+    private void createAccounts(final Bank bank) throws RemoteException {
+        for (final Map.Entry<String, List<String>> person : accounts.entrySet()) {
+            for (final String accountName : person.getValue()) {
+                assertNotNull(bank.createAccount(person.getKey(), accountName));
+            }
+        }
     }
 
     private void checkAmount(final Bank bank, final String passport, final String subId, final int expected) throws RemoteException {
         final Person person = bank.getRemotePerson(passport);
         assertNotNull(person);
-
         final Account account = person.getAccount(subId);
         assertNotNull(account);
-
         assertEquals(expected, account.getAmount());
     }
 
@@ -75,8 +145,8 @@ public class BankTests {
     @DisplayName("setAmount")
     public void setAmount() throws RemoteException {
         final Bank bank = getBank();
-
-        assertNotNull(bank.createPerson("Petr", "Petrov", "7514123456"));
+        createPersons(bank);
+        createAccounts(bank);
 
         final Account account = bank.createAccount("7514123456", "1");
         account.setAmount(135);
@@ -90,13 +160,50 @@ public class BankTests {
     @DisplayName("localChanges")
     public void localChanges() throws RemoteException {
         final Bank bank = getBank();
+        createPersons(bank);
+        createAccounts(bank);
 
-        assertNotNull(bank.createPerson("Ivan", "Ivanov", "123456"));
-        assertNotNull(bank.createAccount("123456", "firstAccount"));
+        for (final String[] data: names) {
+            final Person person = bank.getRemotePerson(data[2]);
+            final Map<String, Account> accounts = person.getAccounts();
+            for (final Map.Entry<String, Account> item : accounts.entrySet()) {
+                item.getValue().setAmount(100);
+            }
+        }
 
-        final Person local = bank.getLocalPerson("123456");
-        local.getAccount("firstAccount").setAmount(200);
+        final List<Person> locals = new ArrayList<>();
+        for (final String[] data: names) {
+            final Person local = bank.getLocalPerson(data[2]);
+            final Map<String, Account> accounts = local.getAccounts();
+            for (final Map.Entry<String, Account> item : accounts.entrySet()) {
+                item.getValue().setAmount(200);
+            }
+            locals.add(local);
+        }
 
-        checkAmount(bank, "123456", "firstAccount", 0);
+        for (final Person local : locals) {
+            final Map<String, Account> accounts = local.getAccounts();
+            final Person remote = bank.getRemotePerson(local.getPassport());
+            for (final Map.Entry<String, Account> item : accounts.entrySet()) {
+                assertEquals(200, item.getValue().getAmount());
+                assertEquals(100, remote.getAccount(item.getKey()).getAmount());
+            }
+        }
+
+        for (final String[] data: names) {
+            final Map<String, Account> accounts = bank.getRemotePerson(data[2]).getAccounts();
+            for (final Map.Entry<String, Account> item : accounts.entrySet()) {
+                item.getValue().setAmount(300);
+            }
+        }
+
+        for (final Person local : locals) {
+            final Person remote = bank.getRemotePerson(local.getPassport());
+            final Map<String, Account> accounts = local.getAccounts();
+            for (final Map.Entry<String, Account> item : accounts.entrySet()) {
+                assertEquals(200, item.getValue().getAmount());
+                assertEquals(300, remote.getAccount(item.getKey()).getAmount());
+            }
+        }
     }
 }
