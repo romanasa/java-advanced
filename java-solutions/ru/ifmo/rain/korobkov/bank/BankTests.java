@@ -8,8 +8,6 @@ import java.rmi.registry.Registry;
 import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("Bank Test")
@@ -133,6 +131,21 @@ public class BankTests {
         }
     }
 
+    @Test
+    @DisplayName("getAccounts")
+    public void getAccounts() throws RemoteException {
+        final Bank bank = getBank();
+        createPersons(bank);
+        createAccounts(bank);
+
+        for (final Map.Entry<String, List<String>> data : accounts.entrySet()) {
+            final Person person = bank.getRemotePerson(data.getKey());
+            for (final String accountName : data.getValue()) {
+                assertNotNull(person.getAccount(accountName));
+            }
+        }
+    }
+
     private void checkAmount(final Bank bank, final String passport, final String subId, final int expected) throws RemoteException {
         final Person person = bank.getRemotePerson(passport);
         assertNotNull(person);
@@ -141,19 +154,63 @@ public class BankTests {
         assertEquals(expected, account.getAmount());
     }
 
+    private void createAmounts(final Bank bank) throws RemoteException {
+        int s = 0;
+        for (final Map.Entry<String, List<String>> data : accounts.entrySet()) {
+            final Person person = bank.getRemotePerson(data.getKey());
+            int i = 0;
+            for (final String accountName : data.getValue()) {
+                person.getAccount(accountName).setAmount(s * i);
+                i++;
+            }
+            s++;
+        }
+    }
+
     @Test
     @DisplayName("setAmount")
     public void setAmount() throws RemoteException {
         final Bank bank = getBank();
+
+        createPersons(bank);
+        createAccounts(bank);
+        createAmounts(bank);
+
+        int s = 0;
+        for (final Map.Entry<String, List<String>> data : accounts.entrySet()) {
+            final Person person = bank.getRemotePerson(data.getKey());
+            int i = 0;
+            for (final String accountName : data.getValue()) {
+                checkAmount(bank, data.getKey(), accountName, s * i);
+                i++;
+            }
+            s++;
+        }
+    }
+
+
+    @Test
+    @DisplayName("remoteChanges")
+    public void remoteChanges() throws RemoteException {
+        final Bank bank = getBank();
         createPersons(bank);
         createAccounts(bank);
 
-        final Account account = bank.createAccount("7514123456", "1");
-        account.setAmount(135);
+        for (final String[] data: names) {
+            final Person person = bank.getRemotePerson(data[2]);
+            final Map<String, Account> accounts = person.getAccounts();
+            for (final Map.Entry<String, Account> item : accounts.entrySet()) {
+                item.getValue().setAmount(200);
+            }
+        }
 
-        assertEquals(135, account.getAmount());
-        assertEquals(135, bank.getLocalPerson("7514123456").getAccount("1").getAmount());
-        assertEquals(135, bank.getRemotePerson("7514123456").getAccount("1").getAmount());
+        for (final String[] data: names) {
+            final Person person = bank.getRemotePerson(data[2]);
+            final Map<String, Account> accounts = person.getAccounts();
+            for (final Map.Entry<String, Account> item : accounts.entrySet()) {
+                assertEquals(200, person.getAccount(item.getKey()).getAmount());
+            }
+        }
     }
 
     @Test
@@ -185,7 +242,7 @@ public class BankTests {
             final Map<String, Account> accounts = local.getAccounts();
             final Person remote = bank.getRemotePerson(local.getPassport());
             for (final Map.Entry<String, Account> item : accounts.entrySet()) {
-                assertEquals(200, item.getValue().getAmount());
+                assertEquals(200, local.getAccount(item.getKey()).getAmount());
                 assertEquals(100, remote.getAccount(item.getKey()).getAmount());
             }
         }
