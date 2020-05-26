@@ -33,23 +33,30 @@ public class RemoteBank implements Bank {
     }
 
     public Person getLocalPerson(final String passport) throws RemoteException {
-        get("Person", "passport", passport);
+        get("LocalPerson", "passport", passport);
         final Person person = remotePersons.get(passport);
         return person != null ? new LocalPerson(person) : noSuchPerson(passport);
     }
 
     public Person getRemotePerson(final String passport) {
-        get("Person", "passport", passport);
+        get("RemotePerson", "passport", passport);
         final Person person = remotePersons.get(passport);
         return person != null ? person : noSuchPerson(passport);
     }
 
+    private<T> T checkResult(final T result, final RemoteException exception) throws RemoteException {
+        if (result == null) {
+            throw exception;
+        }
+        return result;
+    }
+
     public Person createPerson(final String firstName, final String lastName,
                                final String passport) throws RemoteException {
-        create("Person", "passport", passport);
         final RemoteException exception = new RemoteException("Can't export person with " +
                                                             "passport = " + passport);
         final Person result = remotePersons.computeIfAbsent(passport, ignored -> {
+            create("Person", "passport", passport);
             final RemotePerson person = new RemotePerson(firstName, lastName, passport, this);
             try {
                 UnicastRemoteObject.exportObject(person, port);
@@ -60,10 +67,7 @@ public class RemoteBank implements Bank {
             accountMaps.put(person, new ConcurrentHashMap<>());
             return person;
         });
-        if (result == null) {
-            throw exception;
-        }
-        return result;
+        return checkResult(result, exception);
     }
 
     private String getId(final String passport, final String subId) {
@@ -72,16 +76,16 @@ public class RemoteBank implements Bank {
 
     public Account createAccount(final String passport, final String subId) throws RemoteException {
         final String id = getId(passport, subId);
-        create("Account", "id", id);
         final Person person = getRemotePerson(passport);
         if (person == null) {
-            System.out.println("Can't create account");
+            System.out.print("Can't create account: ");
             return noSuchPerson(passport);
         }
 
         final RemoteException exception = new RemoteException("Can't export account with " +
                 "id = " + id);
         final Account result = accounts.computeIfAbsent(id, ignored -> {
+            create("Account", "id", id);
             final Account account = new RemoteAccount(id);
             try {
                 UnicastRemoteObject.exportObject(account, port);
@@ -92,10 +96,7 @@ public class RemoteBank implements Bank {
             accountMaps.get(person).put(subId, account);
             return account;
         });
-        if (result == null) {
-            throw exception;
-        }
-        return result;
+        return checkResult(result, exception);
     }
 
     public ConcurrentHashMap<String, Account> getAccounts(final String passport) {

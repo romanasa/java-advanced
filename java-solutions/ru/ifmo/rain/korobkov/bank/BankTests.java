@@ -263,4 +263,35 @@ public class BankTests {
             }
         }
     }
+
+
+    @Test
+    @DisplayName("multiplePersons")
+    public void multiplePersons() throws RemoteException {
+        final Bank bank = getBank();
+        createPersons(bank);
+
+        for (final String[] data : names) {
+            final Person old = bank.getRemotePerson(data[2]);
+            final Person person = bank.createPerson(data[0], data[1], data[2]);
+            assertEquals(old, person);
+        }
+    }
+
+
+    @Test
+    @DisplayName("multipleAccounts")
+    public void multipleAccounts() throws RemoteException {
+        final Bank bank = getBank();
+        createPersons(bank);
+        createAccounts(bank);
+
+        for (final Map.Entry<String, List<String>> person : accounts.entrySet()) {
+            for (final String accountName : person.getValue()) {
+                final Account old = bank.getRemotePerson(person.getKey()).getAccount(accountName);
+                final Account account = bank.createAccount(person.getKey(), accountName);
+                assertEquals(old, account);
+            }
+        }
+    }
 }
