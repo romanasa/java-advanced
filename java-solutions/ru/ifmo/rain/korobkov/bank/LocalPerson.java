@@ -16,6 +16,7 @@ public class LocalPerson extends AbstractPerson {
         }
     }
 
+    // :NOTE: Убрать
     public ConcurrentHashMap<String, Account> getAccounts() {
         return new ConcurrentHashMap<>(accounts);
     }

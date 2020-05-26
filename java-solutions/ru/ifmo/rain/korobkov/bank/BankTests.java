@@ -17,13 +17,13 @@ public class BankTests {
     private static final int port = 8888;
     private static final String name = String.format("//localhost:%d/bank", port);
 
-    private static final String[][] names = {
+    private static final String[][] NAMES = {
             {"Ivan", "Ivanov", "123456"},
             {"Petr", "Petrov", "7514123456"},
             {"Petr", "Ivanov", "654321"},
     };
 
-    private static final Map<String, List<String>> accounts = Map.of(
+    private static final Map<String, List<String>> ACCOUNTS = Map.of(
             "123456", Arrays.asList("1", "2", "3"),
             "7514123456", Arrays.asList("first", "second", "main"),
             "654321", Arrays.asList("A", "B", "C")
@@ -90,7 +90,7 @@ public class BankTests {
     }
 
     private void createPersons(final Bank bank) throws RemoteException {
-        for (final String[] data : names) {
+        for (final String[] data : NAMES) {
             final Person person = bank.createPerson(data[0], data[1], data[2]);
             checkPerson(person, data[0], data[1], data[2]);
         }
@@ -108,7 +108,7 @@ public class BankTests {
     public void getRemotePerson() throws RemoteException {
         final Bank bank = getBank();
         createPersons(bank);
-        for (final String[] data: names) {
+        for (final String[] data: NAMES) {
             checkRemotePerson(bank, data[0], data[1], data[2]);
         }
     }
@@ -118,13 +118,13 @@ public class BankTests {
     public void getLocalPerson() throws RemoteException {
         final Bank bank = getBank();
         createPersons(bank);
-        for (final String[] data: names) {
+        for (final String[] data: NAMES) {
             checkLocalPerson(bank, data[0], data[1], data[2]);
         }
     }
 
     private void createAccounts(final Bank bank) throws RemoteException {
-        for (final Map.Entry<String, List<String>> person : accounts.entrySet()) {
+        for (final Map.Entry<String, List<String>> person : ACCOUNTS.entrySet()) {
             for (final String accountName : person.getValue()) {
                 assertNotNull(bank.createAccount(person.getKey(), accountName));
             }
@@ -138,7 +138,7 @@ public class BankTests {
         createPersons(bank);
         createAccounts(bank);
 
-        for (final Map.Entry<String, List<String>> data : accounts.entrySet()) {
+        for (final Map.Entry<String, List<String>> data : ACCOUNTS.entrySet()) {
             final Person person = bank.getRemotePerson(data.getKey());
             for (final String accountName : data.getValue()) {
                 assertNotNull(person.getAccount(accountName));
@@ -156,7 +156,7 @@ public class BankTests {
 
     private void createAmounts(final Bank bank) throws RemoteException {
         int s = 0;
-        for (final Map.Entry<String, List<String>> data : accounts.entrySet()) {
+        for (final Map.Entry<String, List<String>> data : ACCOUNTS.entrySet()) {
             final Person person = bank.getRemotePerson(data.getKey());
             int i = 0;
             for (final String accountName : data.getValue()) {
@@ -168,7 +168,6 @@ public class BankTests {
     }
 
     @Test
-    @DisplayName("setAmount")
     public void setAmount() throws RemoteException {
         final Bank bank = getBank();
 
@@ -177,7 +176,7 @@ public class BankTests {
         createAmounts(bank);
 
         int s = 0;
-        for (final Map.Entry<String, List<String>> data : accounts.entrySet()) {
+        for (final Map.Entry<String, List<String>> data : ACCOUNTS.entrySet()) {
             final Person person = bank.getRemotePerson(data.getKey());
             int i = 0;
             for (final String accountName : data.getValue()) {
@@ -196,7 +195,7 @@ public class BankTests {
         createPersons(bank);
         createAccounts(bank);
 
-        for (final String[] data: names) {
+        for (final String[] data: NAMES) {
             final Person person = bank.getRemotePerson(data[2]);
             final Map<String, Account> accounts = person.getAccounts();
             for (final Map.Entry<String, Account> item : accounts.entrySet()) {
@@ -204,7 +203,7 @@ public class BankTests {
             }
         }
 
-        for (final String[] data: names) {
+        for (final String[] data: NAMES) {
             final Person person = bank.getRemotePerson(data[2]);
             final Map<String, Account> accounts = person.getAccounts();
             for (final Map.Entry<String, Account> item : accounts.entrySet()) {
@@ -220,7 +219,7 @@ public class BankTests {
         createPersons(bank);
         createAccounts(bank);
 
-        for (final String[] data: names) {
+        for (final String[] data: NAMES) {
             final Person person = bank.getRemotePerson(data[2]);
             final Map<String, Account> accounts = person.getAccounts();
             for (final Map.Entry<String, Account> item : accounts.entrySet()) {
@@ -229,7 +228,7 @@ public class BankTests {
         }
 
         final List<Person> locals = new ArrayList<>();
-        for (final String[] data: names) {
+        for (final String[] data: NAMES) {
             final Person local = bank.getLocalPerson(data[2]);
             final Map<String, Account> accounts = local.getAccounts();
             for (final Map.Entry<String, Account> item : accounts.entrySet()) {
@@ -247,7 +246,7 @@ public class BankTests {
             }
         }
 
-        for (final String[] data: names) {
+        for (final String[] data: NAMES) {
             final Map<String, Account> accounts = bank.getRemotePerson(data[2]).getAccounts();
             for (final Map.Entry<String, Account> item : accounts.entrySet()) {
                 item.getValue().setAmount(300);
@@ -271,7 +270,7 @@ public class BankTests {
         final Bank bank = getBank();
         createPersons(bank);
 
-        for (final String[] data : names) {
+        for (final String[] data : NAMES) {
             final Person old = bank.getRemotePerson(data[2]);
             final Person person = bank.createPerson(data[0], data[1], data[2]);
             assertEquals(old, person);
@@ -286,7 +285,7 @@ public class BankTests {
         createPersons(bank);
         createAccounts(bank);
 
-        for (final Map.Entry<String, List<String>> person : accounts.entrySet()) {
+        for (final Map.Entry<String, List<String>> person : ACCOUNTS.entrySet()) {
             for (final String accountName : person.getValue()) {
                 final Account old = bank.getRemotePerson(person.getKey()).getAccount(accountName);
                 final Account account = bank.createAccount(person.getKey(), accountName);
