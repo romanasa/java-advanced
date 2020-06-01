@@ -1,12 +1,12 @@
 package ru.ifmo.rain.korobkov.bank;
 
 import java.io.Serializable;
-import java.rmi.RemoteException;
+import java.rmi.Remote;
 
-public abstract class AbstractPerson implements Person, Serializable {
-    private final String firstName;
-    private final String lastName;
-    private final String passport;
+public abstract class AbstractPerson implements Serializable {
+    protected String firstName;
+    protected String lastName;
+    protected String passport;
 
     public AbstractPerson(final String firstName, final String lastName, final String passport) {
         this.firstName = firstName;
@@ -14,21 +14,22 @@ public abstract class AbstractPerson implements Person, Serializable {
         this.passport = passport;
     }
 
-    @Override
+    private void get(final String field) {
+        System.out.println(String.format("Getting %s for Person with passport = %s", field, passport));
+    }
+
     public String getFirstName() {
-        System.out.println("Getting first name for person with passport = " + passport);
+        get("first name");
         return firstName;
     }
 
-    @Override
     public String getLastName() {
-        System.out.println("Getting last name for person with passport = " + passport);
+        get("last name");
         return lastName;
     }
 
-    @Override
     public String getPassport() {
+        get("passport");
         return passport;
     }
-
 }

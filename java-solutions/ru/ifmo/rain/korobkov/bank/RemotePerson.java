@@ -1,23 +1,21 @@
 package ru.ifmo.rain.korobkov.bank;
 
-import java.rmi.Remote;
-import java.rmi.RemoteException;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 
-public class RemotePerson extends AbstractPerson {
-    private final Bank bank;
+public class RemotePerson extends AbstractPerson implements Person {
+    private final RemoteBank bank;
 
     public RemotePerson(final String firstName, final String lastName, final String passport,
-                        final Bank bank) {
+                        final RemoteBank bank) {
         super(firstName, lastName, passport);
         this.bank = bank;
     }
 
-    public ConcurrentHashMap<String, Account> getAccounts() throws RemoteException {
+    public Map<String, Account> getAccounts() {
         return bank.getAccounts(getPassport());
     }
 
-    public Account getAccount(final String subId) throws RemoteException {
+    public Account getAccount(final String subId) {
         return bank.getAccount(getPassport(), subId);
     }
 }

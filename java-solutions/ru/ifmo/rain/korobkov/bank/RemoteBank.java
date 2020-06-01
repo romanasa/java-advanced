@@ -7,9 +7,10 @@ import java.util.concurrent.ConcurrentMap;
 
 public class RemoteBank implements Bank {
     private final int port;
-    private final ConcurrentMap<String, Person> remotePersons = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Person> persons = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Account> accounts = new ConcurrentHashMap<>();
-    private final ConcurrentMap<Person, ConcurrentHashMap<String, Account>> accountMaps = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Person,
+            ConcurrentHashMap<String, Account>> accountMaps = new ConcurrentHashMap<>();
 
     public RemoteBank(final int port) {
         this.port = port;
@@ -32,15 +33,15 @@ public class RemoteBank implements Bank {
         System.out.println(String.format("Creating %s by %s = %s", object, field, value));
     }
 
-    public Person getLocalPerson(final String passport) throws RemoteException {
+    public LocalPerson getLocalPerson(final String passport) throws RemoteException {
         get("LocalPerson", "passport", passport);
-        final Person person = remotePersons.get(passport);
+        final Person person = persons.get(passport);
         return person != null ? new LocalPerson(person) : noSuchPerson(passport);
     }
 
     public Person getRemotePerson(final String passport) {
         get("RemotePerson", "passport", passport);
-        final Person person = remotePersons.get(passport);
+        final Person person = persons.get(passport);
         return person != null ? person : noSuchPerson(passport);
     }
 
@@ -55,9 +56,9 @@ public class RemoteBank implements Bank {
                                final String passport) throws RemoteException {
         final RemoteException exception = new RemoteException("Can't export person with " +
                                                             "passport = " + passport);
-        final Person result = remotePersons.computeIfAbsent(passport, ignored -> {
+        final Person result = persons.computeIfAbsent(passport, ignored -> {
             create("Person", "passport", passport);
-            final RemotePerson person = new RemotePerson(firstName, lastName, passport, this);
+            final Person person = new RemotePerson(firstName, lastName, passport, this);
             try {
                 UnicastRemoteObject.exportObject(person, port);
             } catch (final RemoteException e) {
@@ -99,17 +100,17 @@ public class RemoteBank implements Bank {
         return checkResult(result, exception);
     }
 
-    public ConcurrentHashMap<String, Account> getAccounts(final String passport) {
+    ConcurrentHashMap<String, Account> getAccounts(final String passport) {
         get("Accounts", "passport", passport);
-        final Person person = remotePersons.get(passport);
+        final Person person = persons.get(passport);
         return person != null ? accountMaps.get(person) : noSuchPerson(passport);
     }
 
-    public Account getAccount(final String passport, final String subId) {
+    Account getAccount(final String passport, final String subId) {
         return getAccount(getId(passport, subId));
     }
 
-    public Account getAccount(final String id) {
+    Account getAccount(final String id) {
         get("Account", "id", id);
         final Account account = accounts.get(id);
         return account != null ? account : noSuch("Account", "id", id);

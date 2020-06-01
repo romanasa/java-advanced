@@ -9,6 +9,8 @@ module ru.ifmo.rain.korobkov {
     requires info.kgeorgiy.java.advanced.walk;
     requires java.rmi;
     requires org.junit.jupiter.api;
+    requires org.junit.platform.engine;
+    requires org.junit.platform.launcher;
     requires hamcrest.core;
 
     exports ru.ifmo.rain.korobkov.bank to java.rmi;

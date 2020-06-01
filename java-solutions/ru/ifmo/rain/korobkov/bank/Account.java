@@ -1,9 +1,9 @@
 package ru.ifmo.rain.korobkov.bank;
 
-import java.io.Serializable;
-import java.rmi.*;
+import java.rmi.Remote;
+import java.rmi.RemoteException;
 
-public interface Account extends Remote, Serializable {
+public interface Account extends Remote {
     /** Returns account identifier. */
     String getId() throws RemoteException;
 
