@@ -5,7 +5,7 @@ call compileBank.bat
 if %ERRORLEVEL% EQU 0 (
    echo Success
 ) else (
-   exit %errorlevel%
+   exit /b %errorlevel%
 )
 
 echo Running tests...
@@ -22,6 +22,6 @@ if %ERRORLEVEL% EQU 0 (
    echo Success
 ) else (
    echo Fail
-   exit %errorlevel%
+   exit /b %errorlevel%
 )
 
