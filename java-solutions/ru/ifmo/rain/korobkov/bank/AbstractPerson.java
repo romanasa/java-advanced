@@ -1,7 +1,6 @@
 package ru.ifmo.rain.korobkov.bank;
 
 import java.io.Serializable;
-import java.rmi.Remote;
 
 public abstract class AbstractPerson implements Serializable {
     protected String firstName;

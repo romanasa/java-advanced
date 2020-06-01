@@ -1,6 +1,7 @@
 package ru.ifmo.rain.korobkov.bank;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class RemotePerson extends AbstractPerson implements Person {
     private final RemoteBank bank;
@@ -12,7 +13,8 @@ public class RemotePerson extends AbstractPerson implements Person {
     }
 
     public Map<String, Account> getAccounts() {
-        return bank.getAccounts(getPassport());
+        final ConcurrentHashMap<String, Account> accounts = bank.getAccounts(getPassport());
+        return accounts == null ? null : Map.copyOf(accounts);
     }
 
     public Account getAccount(final String subId) {

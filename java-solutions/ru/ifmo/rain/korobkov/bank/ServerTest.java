@@ -2,7 +2,6 @@ package ru.ifmo.rain.korobkov.bank;
 import org.junit.jupiter.api.*;
 
 import java.rmi.NotBoundException;
-import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -17,8 +16,8 @@ import static org.junit.jupiter.api.Assertions.*;
 public class ServerTest {
 
     private static Registry registry;
-    private static final int port = 8888;
-    private static final String name = String.format("//localhost:%d/bank", port);
+    private static final int PORT = 8888;
+    private static final String NAME = String.format("//localhost:%d/bank", PORT);
 
     private static final String[][] NAMES = {
             {"Ivan", "Ivanov", "123456"},
@@ -45,28 +44,28 @@ public class ServerTest {
     public static void beforeAll() throws RemoteException {
         System.out.println("Starting registry");
         try {
-            LocateRegistry.createRegistry(port);
+            LocateRegistry.createRegistry(PORT);
         } catch (final ExportException ignored) {
             System.out.println("Registry has already started");
         }
-        registry = LocateRegistry.getRegistry(port);
+        registry = LocateRegistry.getRegistry(PORT);
     }
 
     @BeforeEach
     public void beforeEach() throws RemoteException {
-        final Bank bank = new RemoteBank(port);
-        UnicastRemoteObject.exportObject(bank, port);
-        registry.rebind(name, bank);
+        final Bank bank = new RemoteBank(PORT);
+        UnicastRemoteObject.exportObject(bank, PORT);
+        registry.rebind(NAME, bank);
         System.out.println("Bank rebinded");
     }
 
     @AfterEach
     public void afterEach() throws RemoteException {
         try {
-            registry.unbind(name);
+            registry.unbind(NAME);
             System.out.println("Bank unbinded");
         } catch (final NotBoundException e) {
-            System.out.println("Failed to unbind: " + name);
+            System.out.println("Failed to unbind: " + NAME);
             e.printStackTrace();
         }
     }
@@ -78,7 +77,7 @@ public class ServerTest {
     private Bank getBank() throws RemoteException {
         final Bank bank;
         try {
-            bank = (Bank) registry.lookup(name);
+            bank = (Bank) registry.lookup(NAME);
         } catch (final NotBoundException e) {
             throw new RemoteException("Bank is not found");
         }

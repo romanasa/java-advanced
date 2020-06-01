@@ -2,7 +2,7 @@ package ru.ifmo.rain.korobkov.bank;
 
 import java.io.Serializable;
 
-public class AbstractAccount implements Serializable {
+public abstract class AbstractAccount implements Serializable {
     private final String id;
     private volatile int amount;
 
