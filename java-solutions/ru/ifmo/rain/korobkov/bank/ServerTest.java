@@ -185,6 +185,10 @@ public class ServerTest {
         assertEquals(expected, account.getAmount());
     }
 
+    private void checkLocalAmount(final LocalAccount account, final int expected) {
+        assertEquals(expected, account.getAmount());
+    }
+
     private void setAmount(final Account account, final int amount) throws RemoteException {
         account.setAmount(amount);
     }
@@ -267,11 +271,14 @@ public class ServerTest {
 
         setAmounts(bank, Integer::sum);
 
-        final List<Person> remotes = getRemotePersons(bank);
-        for (final Person remote : remotes) {
-            setRemoteAccounts(remote, 300);
+        for (int it = 0; it < 10; it++) {
+            final List<Person> remotes = getRemotePersons(bank);
+            for (final Person remote : remotes) {
+                setRemoteAccounts(remote, 30 * it);
+            }
+            final int finalIt = it;
+            checkAmounts(bank, (a, b) -> 30 * finalIt);
         }
-        checkAmounts(bank, (a, b) -> 300);
     }
 
     @Test
@@ -282,13 +289,19 @@ public class ServerTest {
 
         setAmounts(bank, Integer::sum);
 
-        final List<LocalPerson> locals = getLocalPersons(bank);
-        for (final LocalPerson local : locals) {
-            setLocalAccounts(local, 300);
+        for (int it = 0; it < 10; it++) {
+            final List<LocalPerson> locals = getLocalPersons(bank);
+            for (final LocalPerson local : locals) {
+                setLocalAccounts(local, 50 * it);
+            }
+            for (final LocalPerson local: locals) {
+                for (final LocalAccount account : local.getAccounts().values()) {
+                    checkLocalAmount(account, 50 * it);
+                }
+            }
+            checkAmounts(bank, Integer::sum);
         }
-        checkAmounts(bank, Integer::sum);
     }
-
 
     @Test
     public void multiplePersons() throws RemoteException {
@@ -297,11 +310,12 @@ public class ServerTest {
 
         for (final String[] data : NAMES) {
             final Person old = bank.getRemotePerson(data[2]);
-            final Person person = bank.createPerson(data[0], data[1], data[2]);
-            assertEquals(old, person);
+            for (int it = 0; it < 10; it++) {
+                final Person person = bank.createPerson(data[0], data[1], data[2]);
+                assertEquals(old, person);
+            }
         }
     }
-
 
     @Test
     public void multipleAccounts() throws RemoteException {
@@ -312,8 +326,10 @@ public class ServerTest {
         for (final Map.Entry<String, List<String>> person : ACCOUNTS.entrySet()) {
             for (final String accountName : person.getValue()) {
                 final Account old = bank.getRemotePerson(person.getKey()).getAccount(accountName);
-                final Account account = bank.createAccount(person.getKey(), accountName);
-                assertEquals(old, account);
+                for (int it = 0; it < 10; it++) {
+                    final Account account = bank.createAccount(person.getKey(), accountName);
+                    assertEquals(old, account);
+                }
             }
         }
     }
