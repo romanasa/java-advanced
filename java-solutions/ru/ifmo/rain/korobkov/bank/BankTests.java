@@ -18,10 +18,10 @@ public class BankTests {
 
     public void runOne() {
         final LauncherDiscoveryRequest request = LauncherDiscoveryRequestBuilder.request()
-                .selectors(selectClass(ru.ifmo.rain.korobkov.bank.ServerTest.class))
+                .selectors(selectClass(ServerTest.class))
                 .build();
         final Launcher launcher = LauncherFactory.create();
-        final TestPlan testPlan = launcher.discover(request);
+        launcher.discover(request);
         launcher.registerTestExecutionListeners(listener);
         launcher.execute(request);
     }
