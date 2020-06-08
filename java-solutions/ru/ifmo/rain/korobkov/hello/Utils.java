@@ -60,9 +60,9 @@ public class Utils {
     public static void shutdownAndAwaitTermination(final ExecutorService pool) {
         pool.shutdown();
         try {
-            if (!pool.awaitTermination(1, TimeUnit.SECONDS)) {
+            if (!pool.awaitTermination(1, TimeUnit.MINUTES)) {
                 pool.shutdownNow();
-                pool.awaitTermination(1, TimeUnit.SECONDS);
+                pool.awaitTermination(1, TimeUnit.MINUTES);
             }
         } catch (final InterruptedException e) {
             pool.shutdownNow();

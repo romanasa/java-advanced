@@ -107,7 +107,7 @@ public class HelloUDPNonblockingClient implements HelloClient {
                 return;
             }
         }
-        Utils.run(selector, this::handleRead, this::handleWrite, 1000);
+        Utils.run(selector, this::handleRead, this::handleWrite, 100);
     }
 
     public static void main(final String[] args) {
