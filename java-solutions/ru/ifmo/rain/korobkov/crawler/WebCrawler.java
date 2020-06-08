@@ -123,7 +123,7 @@ public class WebCrawler implements Crawler {
             }
         }
 
-        private void release() {
+        private synchronized void release() {
             connections--;
             tryRun();
         }
