@@ -42,7 +42,7 @@ public class HelloUDPServer implements HelloServer {
         }
     }
 
-    private String process(final String request) {
+    static String process(final String request) {
         return "Hello, " + request;
     }
 
@@ -74,20 +74,6 @@ public class HelloUDPServer implements HelloServer {
     }
 
     public static void main(final String[] args) {
-        if (args == null || args.length != 2) {
-            throw new IllegalArgumentException("Usage: java HelloUDPServer <port> <threads>");
-        }
-        try {
-            final int port = Integer.parseInt(args[0]);
-            final int threads = Integer.parseInt(args[1]);
-            try (final HelloUDPServer helloUDPServer = new HelloUDPServer()) {
-                helloUDPServer.start(port, threads);
-                TimeUnit.HOURS.sleep(TIMEOUT_HOURS);
-            } catch (final InterruptedException e) {
-                e.printStackTrace();
-            }
-        } catch (final NumberFormatException e) {
-            throw new IllegalArgumentException("Expected integer arguments");
-        }
+        Utils.startServer(args, HelloUDPServer::new);
     }
 }

@@ -12,6 +12,7 @@ module ru.ifmo.rain.korobkov {
     requires org.junit.platform.engine;
     requires org.junit.platform.launcher;
     requires hamcrest.core;
+    requires java.management;
 
     exports ru.ifmo.rain.korobkov.bank to java.rmi;
 }
