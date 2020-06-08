@@ -9,16 +9,16 @@ import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
+import java.util.Queue;
 import java.util.concurrent.*;
 import java.util.stream.Stream;
-
-import static ru.ifmo.rain.korobkov.hello.HelloUDPServer.TIMEOUT_HOURS;
 
 public class HelloUDPNonblockingServer implements HelloServer {
     public int CAPACITY = 4096;
     private ExecutorService workers;
-    private final ConcurrentLinkedQueue<ByteBuffer> free = new ConcurrentLinkedQueue<>();
-    private final ConcurrentLinkedQueue<Data> full = new ConcurrentLinkedQueue<>();
+    private final Queue<ByteBuffer> free = new ArrayDeque<>();
+    private final Queue<Data> full = new ArrayDeque<>();
     private Selector selector;
     private DatagramChannel serverChannel;
 
@@ -34,11 +34,7 @@ public class HelloUDPNonblockingServer implements HelloServer {
 
     private void handleRead(final SelectionKey key) {
         final DatagramChannel serverChannel = (DatagramChannel) key.channel();
-
-        final ByteBuffer buffer = free.remove();
-        if (free.isEmpty()) {
-            key.interestOpsAnd(~SelectionKey.OP_READ);
-        }
+        final ByteBuffer buffer = getData(key, free, SelectionKey.OP_READ);
 
         final SocketAddress clientAddress = Utils.readBuffer(serverChannel, buffer);
         if (clientAddress != null) {
@@ -49,26 +45,34 @@ public class HelloUDPNonblockingServer implements HelloServer {
                 buffer.clear();
                 buffer.put(response.getBytes(StandardCharsets.UTF_8));
 
-                full.add(new Data(buffer, clientAddress));
-                key.interestOpsOr(SelectionKey.OP_WRITE);
-                selector.wakeup();
+                synchronized (this) {
+                    full.add(new Data(buffer, clientAddress));
+                    key.interestOpsOr(SelectionKey.OP_WRITE);
+                    selector.wakeup();
+                }
             });
         }
     }
 
     private void handleWrite(final SelectionKey key) {
         final DatagramChannel channel = (DatagramChannel) key.channel();
-
-        final Data data = full.remove();
-        if (full.isEmpty()) {
-            key.interestOpsAnd(~SelectionKey.OP_WRITE);
-        }
+        final Data data = getData(key, full, SelectionKey.OP_WRITE);
 
         final int bytesSent = Utils.sendBuffer(channel, data.buffer, data.address);
         if (bytesSent != 0) {
-            free.add(data.buffer);
-            key.interestOpsOr(SelectionKey.OP_READ);
+            synchronized (this) {
+                free.add(data.buffer);
+                key.interestOpsOr(SelectionKey.OP_READ);
+            }
         }
+    }
+
+    private synchronized<T> T getData(final SelectionKey key, final Queue<T> queue, final int mask) {
+        final T data = queue.remove();
+        if (queue.isEmpty()) {
+            key.interestOpsAnd(~mask);
+        }
+        return data;
     }
 
     /**
@@ -105,13 +109,14 @@ public class HelloUDPNonblockingServer implements HelloServer {
         try {
             selector.close();
             serverChannel.close();
+            Utils.shutdownAndAwaitTermination(workers);
         } catch (final IOException e) {
             System.err.println("Can't close selector");
             e.printStackTrace();
         }
     }
 
-    public static void main(final String[] args)  {
+    public static void main(final String[] args) {
         Utils.startServer(args, HelloUDPNonblockingServer::new);
     }
 }

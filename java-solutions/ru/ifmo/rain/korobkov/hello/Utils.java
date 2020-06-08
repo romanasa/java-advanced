@@ -17,9 +17,7 @@ import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
 
 import static ru.ifmo.rain.korobkov.hello.HelloUDPServer.TIMEOUT_HOURS;
 
@@ -45,7 +43,6 @@ public class Utils {
         final byte[] receiveBuffer = new byte[socket.getReceiveBufferSize()];
         return new DatagramPacket(receiveBuffer, receiveBuffer.length);
     }
-
 
 
     public static void sendString(final DatagramSocket socket, final DatagramPacket packet,
@@ -107,10 +104,10 @@ public class Utils {
                     for (final Iterator<SelectionKey> i = selector.selectedKeys().iterator(); i.hasNext(); ) {
                         final SelectionKey key = i.next();
                         try {
-                            if (key.isReadable()) {
+                            if (key.isReadable() && (key.interestOps() & SelectionKey.OP_READ) != 0) {
                                 read.accept(key);
                             }
-                            if (key.isValid() && key.isWritable()) {
+                            if (key.isValid() && key.isWritable() && (key.interestOps() & SelectionKey.OP_WRITE) != 0) {
                                 write.accept(key);
                             }
                         } finally {
@@ -172,8 +169,8 @@ public class Utils {
         if (args == null || args.length != 5) {
             throw new IllegalArgumentException("Usage: <host> <port> <prefix> <threads> <perThread>");
         }
-        final var host = args[0];
-        final var prefix = args[2];
+        final String host = args[0];
+        final String prefix = args[2];
         final int port = getArgs(args, 1, 28888);
         final int threadsCount = getArgs(args, 3, 1);
         final int queriesPerThread = getArgs(args, 4, 1);

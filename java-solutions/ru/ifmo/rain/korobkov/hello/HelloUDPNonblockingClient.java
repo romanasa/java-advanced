@@ -1,7 +1,6 @@
 package ru.ifmo.rain.korobkov.hello;
 
 import info.kgeorgiy.java.advanced.hello.HelloClient;
-import info.kgeorgiy.java.advanced.hello.Util;
 
 import java.io.IOException;
 import java.net.*;
@@ -105,6 +104,7 @@ public class HelloUDPNonblockingClient implements HelloClient {
                         new Context(threadId, capacity, requests, prefix, serverAddress));
             } catch (final IOException e) {
                 e.printStackTrace();
+                return;
             }
         }
         Utils.run(selector, this::handleRead, this::handleWrite, 1000);
