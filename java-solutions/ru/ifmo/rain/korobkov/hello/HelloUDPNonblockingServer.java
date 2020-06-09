@@ -12,12 +12,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class HelloUDPNonblockingServer implements HelloServer {
-    public int CAPACITY = 4096;
     private ExecutorService workers;
-    private final Queue<ByteBuffer> free = new ConcurrentLinkedQueue<>();
+    private Queue<ByteBuffer> free;
     private final Queue<Data> full = new ConcurrentLinkedQueue<>();
     private Selector selector;
     private DatagramChannel serverChannel;
@@ -45,7 +45,7 @@ public class HelloUDPNonblockingServer implements HelloServer {
                 buffer.clear();
                 buffer.put(response.getBytes(StandardCharsets.UTF_8));
 
-                synchronized (this) {
+                synchronized (HelloUDPNonblockingServer.this) {
                     full.add(new Data(buffer, clientAddress));
                     key.interestOpsOr(SelectionKey.OP_WRITE);
                     selector.wakeup();
@@ -60,14 +60,12 @@ public class HelloUDPNonblockingServer implements HelloServer {
 
         final int bytesSent = Utils.sendBuffer(channel, data.buffer, data.address);
         if (bytesSent != 0) {
-            synchronized (this) {
-                free.add(data.buffer);
-                key.interestOpsOr(SelectionKey.OP_READ);
-            }
+            free.add(data.buffer);
+            key.interestOpsOr(SelectionKey.OP_READ);
         }
     }
 
-    private synchronized<T> T getData(final SelectionKey key, final Queue<T> queue, final int mask) {
+    private synchronized <T> T getData(final SelectionKey key, final Queue<T> queue, final int mask) {
         final T data = queue.remove();
         if (queue.isEmpty()) {
             key.interestOpsAnd(~mask);
@@ -86,13 +84,15 @@ public class HelloUDPNonblockingServer implements HelloServer {
         try {
             selector = Selector.open();
             serverChannel = DatagramChannel.open();
-            CAPACITY = serverChannel.getOption(StandardSocketOptions.SO_RCVBUF);
+            int capacity = serverChannel.getOption(StandardSocketOptions.SO_RCVBUF);
 
             serverChannel.configureBlocking(false);
             serverChannel.bind(new InetSocketAddress(port));
             serverChannel.register(selector, SelectionKey.OP_READ);
 
-            Stream.generate(() -> ByteBuffer.allocate(CAPACITY)).limit(threads).forEach(free::add);
+            free = Stream.generate(() -> ByteBuffer.allocate(capacity))
+                    .limit(threads)
+                    .collect(Collectors.toCollection(ConcurrentLinkedQueue::new));
             workers = Executors.newFixedThreadPool(threads + 1);
             workers.submit(() -> Utils.run(selector, this::handleRead, this::handleWrite, 0, false));
         } catch (final IOException e) {
