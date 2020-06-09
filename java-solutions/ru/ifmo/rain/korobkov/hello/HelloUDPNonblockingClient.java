@@ -2,6 +2,7 @@ package ru.ifmo.rain.korobkov.hello;
 
 import info.kgeorgiy.java.advanced.hello.HelloClient;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
@@ -9,6 +10,8 @@ import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 public class HelloUDPNonblockingClient implements HelloClient {
 
@@ -19,30 +22,27 @@ public class HelloUDPNonblockingClient implements HelloClient {
         final String prefix;
         final SocketAddress address;
 
-        final ByteBuffer buffer;
-
-        Context(final int threadId, final int capacity, final int requests, final String prefix, final SocketAddress address) {
+        Context(final int threadId, final int requests, final String prefix, final SocketAddress address) {
             this.threadId = threadId;
             this.requestId = 0;
             this.requests = requests;
             this.prefix = prefix;
             this.address = address;
-
-            buffer = ByteBuffer.allocate(capacity);
         }
     }
 
+    ByteBuffer buffer = null;
 
     private void handleWrite(final SelectionKey key) {
         final DatagramChannel channel = (DatagramChannel) key.channel();
         final Context context = (Context) key.attachment();
 
-        context.buffer.clear();
+        buffer.clear();
 
         final String message = Utils.createMessage(context.prefix, context.threadId, context.requestId);
-        context.buffer.put(message.getBytes(StandardCharsets.UTF_8));
+        buffer.put(message.getBytes(StandardCharsets.UTF_8));
 
-        final int bytesSent = Utils.sendBuffer(channel, context.buffer, context.address);
+        final int bytesSent = Utils.sendBuffer(channel, buffer, context.address);
         if (bytesSent != 0) {
             key.interestOps(SelectionKey.OP_READ);
         }
@@ -53,10 +53,10 @@ public class HelloUDPNonblockingClient implements HelloClient {
         final DatagramChannel channel = (DatagramChannel) key.channel();
         final Context context = (Context) key.attachment();
 
-        final SocketAddress clientAddress = Utils.readBuffer(channel, context.buffer);
+        final SocketAddress clientAddress = Utils.readBuffer(channel, buffer);
 
         if (clientAddress != null) {
-            final String response = StandardCharsets.UTF_8.decode(context.buffer).toString();
+            final String response = StandardCharsets.UTF_8.decode(buffer).toString();
             if (Utils.check(response, context.threadId, context.requestId)) {
                 context.requestId++;
                 if (context.requestId < context.requests) {
@@ -93,21 +93,37 @@ public class HelloUDPNonblockingClient implements HelloClient {
             return;
         }
 
+        final List<DatagramChannel> channels = new ArrayList<>();
+
+        int capacity = 4096;
         for (int threadId = 0; threadId < threads; threadId++) {
             try {
                 final DatagramChannel channel = DatagramChannel.open();
-                final int capacity = channel.getOption(StandardSocketOptions.SO_RCVBUF);
 
                 channel.configureBlocking(false);
                 channel.bind(null);
                 channel.register(selector, SelectionKey.OP_WRITE,
-                        new Context(threadId, capacity, requests, prefix, serverAddress));
+                        new Context(threadId, requests, prefix, serverAddress));
+                channels.add(channel);
+
+                capacity = channel.getOption(StandardSocketOptions.SO_RCVBUF);
             } catch (final IOException e) {
                 e.printStackTrace();
                 return;
             }
         }
+        buffer = ByteBuffer.allocate(capacity);
         Utils.run(selector, this::handleRead, this::handleWrite, 100);
+
+        close(selector);
+        channels.forEach(HelloUDPNonblockingClient::close);
+    }
+
+    private static void close(final Closeable x) {
+        try {
+            x.close();
+        } catch (final IOException ignored) {
+        }
     }
 
     public static void main(final String[] args) {
