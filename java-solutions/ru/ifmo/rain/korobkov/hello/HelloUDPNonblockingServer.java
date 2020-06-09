@@ -17,8 +17,8 @@ import java.util.stream.Stream;
 public class HelloUDPNonblockingServer implements HelloServer {
     public int CAPACITY = 4096;
     private ExecutorService workers;
-    private final Queue<ByteBuffer> free = new ArrayDeque<>();
-    private final Queue<Data> full = new ArrayDeque<>();
+    private final Queue<ByteBuffer> free = new ConcurrentLinkedQueue<>();
+    private final Queue<Data> full = new ConcurrentLinkedQueue<>();
     private Selector selector;
     private DatagramChannel serverChannel;
 
