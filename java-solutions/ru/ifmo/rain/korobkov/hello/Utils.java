@@ -96,7 +96,7 @@ public class Utils {
     }
 
     static void run(final Selector selector, final Consumer<SelectionKey> read,
-                    final Consumer<SelectionKey> write, final long timeout) {
+                    final Consumer<SelectionKey> write, final long timeout, final boolean repeat) {
         while (selector.isOpen()) {
             try {
                 final int updates = selector.select(timeout);
@@ -114,7 +114,7 @@ public class Utils {
                             i.remove();
                         }
                     }
-                } else {
+                } else if (repeat) {
                     boolean was = false;
                     for (final SelectionKey key : selector.keys()) {
                         if (key.interestOps() > 0) {

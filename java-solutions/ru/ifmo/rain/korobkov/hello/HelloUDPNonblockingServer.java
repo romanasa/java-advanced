@@ -94,7 +94,7 @@ public class HelloUDPNonblockingServer implements HelloServer {
 
             Stream.generate(() -> ByteBuffer.allocate(CAPACITY)).limit(threads).forEach(free::add);
             workers = Executors.newFixedThreadPool(threads + 1);
-            workers.submit(() -> Utils.run(selector, this::handleRead, this::handleWrite, 0));
+            workers.submit(() -> Utils.run(selector, this::handleRead, this::handleWrite, 0, false));
         } catch (final IOException e) {
             System.err.println("Can't start server");
             e.printStackTrace();

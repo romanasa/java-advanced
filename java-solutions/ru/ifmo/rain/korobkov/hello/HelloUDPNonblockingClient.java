@@ -113,7 +113,7 @@ public class HelloUDPNonblockingClient implements HelloClient {
             }
         }
         buffer = ByteBuffer.allocate(capacity);
-        Utils.run(selector, this::handleRead, this::handleWrite, 100);
+        Utils.run(selector, this::handleRead, this::handleWrite, 100, true);
 
         close(selector);
         channels.forEach(HelloUDPNonblockingClient::close);
