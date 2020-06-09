@@ -120,6 +120,9 @@ public class HelloUDPNonblockingClient implements HelloClient {
     }
 
     private static void close(final Closeable x) {
+        if (x == null) {
+            return;
+        }
         try {
             x.close();
         } catch (final IOException ignored) {

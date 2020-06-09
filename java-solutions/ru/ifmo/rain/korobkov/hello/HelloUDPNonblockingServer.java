@@ -107,8 +107,12 @@ public class HelloUDPNonblockingServer implements HelloServer {
     @Override
     public void close() {
         try {
-            selector.close();
-            serverChannel.close();
+            if (selector != null) {
+                selector.close();
+            }
+            if (serverChannel != null) {
+                serverChannel.close();
+            }
             Utils.shutdownAndAwaitTermination(workers);
         } catch (final IOException e) {
             System.err.println("Can't close selector");
