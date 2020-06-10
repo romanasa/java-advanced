@@ -12,6 +12,7 @@ import java.util.stream.Stream;
 
 /**
  * Solution Class for HW 7
+ *
  * @see info.kgeorgiy.java.advanced.concurrent.AdvancedIP
  */
 public class IterativeParallelism implements AdvancedIP {
@@ -27,9 +28,9 @@ public class IterativeParallelism implements AdvancedIP {
 
     /**
      * Join values to string.
-     * @param threads number of concurrent threads.
-     * @param values values to join.
      *
+     * @param threads number of concurrent threads.
+     * @param values  values to join.
      * @return list of joined result of {@link #toString()} call on each value.
      * @throws InterruptedException if threads were interrupted.
      */
@@ -41,13 +42,11 @@ public class IterativeParallelism implements AdvancedIP {
     }
 
     /**
-     *
      * Filters values by predicate.
      *
-     * @param threads number of concurrent threads.
-     * @param values values to filter.
+     * @param threads   number of concurrent threads.
+     * @param values    values to filter.
      * @param predicate filter predicate.
-     *
      * @return list of values satisfying given predicated. Order of values is preserved.
      * @throws InterruptedException if threads were interrupted.
      */
@@ -62,9 +61,8 @@ public class IterativeParallelism implements AdvancedIP {
      * Maps values.
      *
      * @param threads number of concurrent threads.
-     * @param values values to filter.
-     * @param f mapper function.
-     *
+     * @param values  values to filter.
+     * @param f       mapper function.
      * @return list of values mapped by given function.
      * @throws InterruptedException if threads were interrupted.
      */
@@ -79,7 +77,7 @@ public class IterativeParallelism implements AdvancedIP {
         return stream.collect(Collectors.toList());
     }
 
-    private<T> List<T> collectListFunction(final Stream<? extends List<T>> stream) {
+    private <T> List<T> collectListFunction(final Stream<? extends List<T>> stream) {
         return stream.flatMap(Collection::stream).collect(Collectors.toList());
     }
 
@@ -147,8 +145,8 @@ public class IterativeParallelism implements AdvancedIP {
     /**
      * Computes the maximum value.
      *
-     * @param threads number or concurrent threads.
-     * @param values values to get maximum of.
+     * @param threads    number or concurrent threads.
+     * @param values     values to get maximum of.
      * @param comparator value comparator.
      * @return maximum value
      * @throws InterruptedException if threads were interrupted.
@@ -167,10 +165,10 @@ public class IterativeParallelism implements AdvancedIP {
     /**
      * Computes the minimum value
      *
-     * @param threads number or concurrent threads.
-     * @param values values to get minimum of.
+     * @param threads    number or concurrent threads.
+     * @param values     values to get minimum of.
      * @param comparator value comparator.
-     * @param <T> value type
+     * @param <T>        value type
      * @return minimum of given values
      * @throws InterruptedException if threads were interrupted.
      */
@@ -182,8 +180,8 @@ public class IterativeParallelism implements AdvancedIP {
     /**
      * Returns whether any of values satisfies predicate.
      *
-     * @param threads number or concurrent threads.
-     * @param values values to test.
+     * @param threads   number or concurrent threads.
+     * @param values    values to test.
      * @param predicate test predicate.
      * @return whether any value satisfies predicate or {@code false}, if no values are given.
      * @throws InterruptedException if threads were interrupted.
@@ -197,8 +195,8 @@ public class IterativeParallelism implements AdvancedIP {
     /**
      * Returns whether all values satisfies predicate.
      *
-     * @param threads number or concurrent threads.
-     * @param values values to test.
+     * @param threads   number or concurrent threads.
+     * @param values    values to test.
      * @param predicate test predicate.
      * @return whether all values satisfies predicate or {@code true}, if no values are given.
      * @throws InterruptedException if threads were interrupted.
@@ -212,9 +210,8 @@ public class IterativeParallelism implements AdvancedIP {
      * Reduces values using monoid.
      *
      * @param threads number of concurrent threads.
-     * @param values values to reduce.
-     * @param monoid monoid to use.
-     *
+     * @param values  values to reduce.
+     * @param monoid  monoid to use.
      * @return values reduced by provided monoid or {@link Monoid#getIdentity() identity} if not values specified.
      * @throws InterruptedException if threads were interrupted.
      */
@@ -225,11 +222,11 @@ public class IterativeParallelism implements AdvancedIP {
 
     /**
      * Maps and reduces values using monoid.
-     * @param threads number of concurrent threads.
-     * @param values values to reduce.
-     * @param lift mapping function.
-     * @param monoid monoid to use.
      *
+     * @param threads number of concurrent threads.
+     * @param values  values to reduce.
+     * @param lift    mapping function.
+     * @param monoid  monoid to use.
      * @return values reduced by provided monoid or {@link Monoid#getIdentity() identity} if not values specified.
      * @throws InterruptedException if threads were interrupted
      */
