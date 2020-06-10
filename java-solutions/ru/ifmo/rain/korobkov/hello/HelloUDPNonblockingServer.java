@@ -1,6 +1,7 @@
 package ru.ifmo.rain.korobkov.hello;
 
 import info.kgeorgiy.java.advanced.hello.HelloServer;
+import info.kgeorgiy.java.advanced.hello.Util;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -47,8 +48,10 @@ public class HelloUDPNonblockingServer implements HelloServer {
 
                 synchronized (HelloUDPNonblockingServer.this) {
                     full.add(new Data(buffer, clientAddress));
-                    key.interestOpsOr(SelectionKey.OP_WRITE);
-                    selector.wakeup();
+                    if ((key.interestOps() & SelectionKey.OP_WRITE) == 0) {
+                        key.interestOpsOr(SelectionKey.OP_WRITE);
+                        selector.wakeup();
+                    }
                 }
             });
         }
@@ -84,7 +87,7 @@ public class HelloUDPNonblockingServer implements HelloServer {
         try {
             selector = Selector.open();
             serverChannel = DatagramChannel.open();
-            int capacity = serverChannel.getOption(StandardSocketOptions.SO_RCVBUF);
+            final int capacity = serverChannel.getOption(StandardSocketOptions.SO_RCVBUF);
 
             serverChannel.configureBlocking(false);
             serverChannel.bind(new InetSocketAddress(port));
@@ -106,18 +109,9 @@ public class HelloUDPNonblockingServer implements HelloServer {
      */
     @Override
     public void close() {
-        try {
-            if (selector != null) {
-                selector.close();
-            }
-            if (serverChannel != null) {
-                serverChannel.close();
-            }
-            Utils.shutdownAndAwaitTermination(workers);
-        } catch (final IOException e) {
-            System.err.println("Can't close selector");
-            e.printStackTrace();
-        }
+        Utils.close(selector);
+        Utils.close(serverChannel);
+        Utils.shutdownAndAwaitTermination(workers);
     }
 
     public static void main(final String[] args) {

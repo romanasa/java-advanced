@@ -23,12 +23,14 @@ public class ServerTest {
             {"Ivan", "Ivanov", "123456"},
             {"Petr", "Petrov", "7514123456"},
             {"Petr", "Ivanov", "654321"},
+            {"Ivan", "Petrov", "1029384756"}
     };
 
     private static final Map<String, List<String>> ACCOUNTS = Map.of(
             "123456", Arrays.asList("1", "2", "3", "4", "5"),
             "7514123456", Arrays.asList("first", "second", "main"),
-            "654321", Arrays.asList("A", "B", "C", "D")
+            "654321", Arrays.asList("A", "B", "C", "D"),
+            "1029384756", Arrays.asList("salary", "savings", "investments")
     );
 
     public static final List<BiFunction<Integer, Integer, Integer>> FUNCTIONS = Arrays.asList(

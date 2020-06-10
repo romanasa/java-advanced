@@ -3,6 +3,7 @@ package ru.ifmo.rain.korobkov.hello;
 import info.kgeorgiy.java.advanced.hello.HelloClient;
 import info.kgeorgiy.java.advanced.hello.HelloServer;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -58,6 +59,9 @@ public class Utils {
 
 
     public static void shutdownAndAwaitTermination(final ExecutorService pool) {
+        if (pool == null) {
+            return;
+        }
         pool.shutdown();
         try {
             if (!pool.awaitTermination(1, TimeUnit.MINUTES)) {
@@ -131,6 +135,16 @@ public class Utils {
                 e.printStackTrace();
                 return;
             }
+        }
+    }
+
+    static void close(final Closeable x) {
+        if (x == null) {
+            return;
+        }
+        try {
+            x.close();
+        } catch (final IOException ignored) {
         }
     }
 

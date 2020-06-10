@@ -109,25 +109,15 @@ public class HelloUDPNonblockingClient implements HelloClient {
                 capacity = channel.getOption(StandardSocketOptions.SO_RCVBUF);
             } catch (final IOException e) {
                 e.printStackTrace();
-                return;
             }
         }
         buffer = ByteBuffer.allocate(capacity);
         Utils.run(selector, this::handleRead, this::handleWrite, 100, true);
 
-        close(selector);
-        channels.forEach(HelloUDPNonblockingClient::close);
+        Utils.close(selector);
+        channels.forEach(Utils::close);
     }
 
-    private static void close(final Closeable x) {
-        if (x == null) {
-            return;
-        }
-        try {
-            x.close();
-        } catch (final IOException ignored) {
-        }
-    }
 
     public static void main(final String[] args) {
         Utils.startClient(args, HelloUDPNonblockingClient::new);
